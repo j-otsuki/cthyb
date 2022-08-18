@@ -1,0 +1,64 @@
+#
+#
+#----------------------------------------------------------
+# i_program
+# flag_tp
+ 0
+ 2
+#----------------------------------------------------------
+# D
+# T
+# ef  h (= ef_d - ef_u)
+# U
+ 1
+ 0.01
+ -0.2  0.0
+ 1.0
+#----------------------------------------------------------
+# V^2
+# g_ch^2
+# g_xy^2  [g_z^2]  (default: g_z = g_xy)
+# b_dos  [w0 (if b_dos=0)]  [w_cutoff power (if b_dos=1)]
+ 0.1
+ 0.0
+ 0.0
+ 1  1.0  1.0
+#----------------------------------------------------------
+# N_BIN  N_MSR
+# N_SEG  N_SPIN  N_BOSON  N_SHIFT  N_SEGSP (optimize if <0)
+ 1  1000000
+ -3  -3  -10  -6  -10
+#----------------------------------------------------------
+# i_mesh  N_X  X_MIN  X_MAX  (if i_program != 0)
+ 1  11  0.01  1
+#----------------------------------------------------------
+
+
+
+#==========================================================
+#
+# i_program
+# // 0: "Parameters fixed",
+# // 1: "T varies",
+# // 2: "V^2 varies",
+# // 3: "g^2 (= g_xy = g_z) varies",
+# // 4: "g_xy^2 varies",
+# // 5: "g_z^2 varies",
+# // 6: "ef varies",
+# // 7: "h varies",
+# // 8: "w0 varies",
+# // 9: "gamma varies",
+# flag_tp
+# // 0: "Green function",
+# // 1: "Green function, susceptibility",
+# // 2: "Green function, susceptibility, vertex",
+# // 3: "free-energy by Wang-Landau sampling",
+#
+# b_dos
+# // 0: DOS = delta(w-w0);
+# // 1: DOS \propto w^{gamma}  (with cutoff `w_cutoff')
+#
+# i_mesh
+# // 0: linear mesh
+# // 1: logarithmic mesh
+#
