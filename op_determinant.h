@@ -15,6 +15,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 class OpDet{
 public:
+    OpDet() {};
     OpDet(int max_k);
 
     // std::vector<double> tau1;  // for f-annihilation (c-creation) operator

@@ -16,6 +16,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 class Operators{
 public:
+    Operators() {};
     Operators(int max_k);
 
     std::vector<double> tau1;  // for f-annihilation (c-creation) operator
