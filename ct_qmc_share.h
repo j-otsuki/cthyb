@@ -47,7 +47,7 @@ const double ACCURACY_FILLING = 1e-8;
 const int FILLING_ITER_MAX = 100;
 
 // #define EQUAL_TIME_G 0
-// 0 for antiferro-exchange 
+// 0 for antiferro-exchange
 // 1 for ferro-exchange interaction (only for N_F=1 and 2)
 // 1 for U-expansion
 
@@ -162,23 +162,8 @@ struct cond_op{
 	double tau2[N_K];  // for f-creation (c-annihilation) operator
 	double mat_M[N_K][N_K];  // [tau1][tau2]
 	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
-	int r[N_K];  // site (for Hubbard model)
-	int k1, k2;  // k1 + k2 = k (test, for Hubbard model)
-	int p1[N_K];  // momenta of c-creation operator (for Hubbard model)
-	int p2[N_K];  // momenta of c-annihilation operator (for Hubbard model)
-// 	int sign;  // sign of contribution to Z
-// 	unsigned long n_k[N_K];  // number of appearance (for statistics)
 };
 
-
-
-// const int N_PHASE = 100;
-// struct phase{
-// 	gsl_interp_accel *acc_re;
-// 	gsl_interp_accel *acc_im;
-// 	gsl_spline *spline_re;
-// 	gsl_spline *spline_im;
-// };
 
 void phase_init(struct phase &PHASE);
 complex<double> phase_interp(struct phase &PHASE, double x);
