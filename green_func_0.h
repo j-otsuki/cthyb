@@ -12,7 +12,6 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 #include "ct_qmc_share.h"
 // dependences:
-// N_TAU
 // DOS
 // ACCURACY_FILLING
 // FILLING_ITER_MAX

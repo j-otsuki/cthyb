@@ -11,7 +11,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 static const char tag[64] = "v2.06";
 
 #include "hyb_qmc.h"
-#include "ct_qmc_share.h"
+// #include "ct_qmc_share.h"
 // #include "matrix_update.h"
 #include "operators.h"
 // #include "green_func_0.h"
@@ -68,15 +68,6 @@ static struct mc_accept_sub{
 
 static FILE *fp_log;
 
-// If N_ADD<0 and/or N_SHIFT<0,
-// N_ADD and/or N_SHIFT is optimized according to
-//   N_ADD = (ave_tot_k / acceptance) * R_ADD * corr_fac
-//   N_SHIFT = (2 * ave_tot_k / acceptance) * R_SHIFT * corr_fac
-// The most part of the configuration is expected to be updated, when R_ADD=1 or R_SHIFT=1.
-static double R_ADD;  // set by R_ADD = -N_ADD / 10
-static double R_SHIFT;  // set by R_SHIFT = -N_SHIFT / 10
-static const int N_ADD_MIN=N_S, N_SHIFT_MIN=1;
-// correction factor: [1:MAX_R_CORR]  determined by P(k)
 
 static int my_rank=0, process_num=1;
 
@@ -92,8 +83,14 @@ static double tau_overlap(double, double, Operators &, double);
 // FUNCTIONS TO BE CALLED BY MAIN FUNCTION
 //
 
-HybQMC::HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed)
+HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed)
 {
+	N_TAU = n_tau;
+	N_K = max_order;
+	N_S = n_s;
+	N_TP = n_tp;
+	N_TP2 = n_tp2;
+
 	// A seed of random number (determined from time if seed=0)
 	unsigned long seed = RAND_SEED;
 
@@ -159,7 +156,7 @@ HybQMC::HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed
 
 
 	S.resize(n_s);
-	for(int i=0; i<n_s; i++)  S[i] = Operators(max_k);
+	for(int i=0; i<n_s; i++)  S[i] = Operators(N_K);
 
 	Delta.resize(n_s);  // default constructor
 
@@ -182,7 +179,7 @@ HybQMC::HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed
 	TP_sp = two_particle(n_tp, n_tp2);
 	TP_ch = two_particle(n_tp, n_tp2);
 
-	PQ = phys_quant(n_s, max_k);
+	PQ = phys_quant(n_s, N_K);
 
 	TP_tau.resize(n_tp+1);
 	// Delta_omega
@@ -196,8 +193,8 @@ HybQMC::HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed
 
 	// B = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
 	// B_TOT = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
-	B = phys_quant_bin(max_k, n_s, n_tau, n_tp);
-	B_TOT = phys_quant_bin(max_k, n_s, n_tau, n_tp);
+	B = phys_quant_bin(N_K, n_s, n_tau, n_tp);
+	B_TOT = phys_quant_bin(N_K, n_s, n_tau, n_tp);
 
 // 	*my_rank_out = my_rank;
 
@@ -264,6 +261,9 @@ void HybQMC::set_nmc(struct num_mc n_mc_in)
 
 	if(n_mc.N_SHIFT<0)  R_SHIFT = -(double)n_mc.N_SHIFT / 10.;
 	else  R_SHIFT = 0;
+
+	N_ADD_MIN = N_S;
+	N_SHIFT_MIN = 1;
 }
 
 void HybQMC::set_params(struct hyb_qmc_params prm_in)
@@ -325,7 +325,7 @@ void HybQMC::set_Delta(vec_vec_c &Delta_omega_in, vec_d &V_sqr)
 // }
 
 // [Optional]
-void HybQMC::set_moment(double moment_f_in[N_S])
+void HybQMC::set_moment(vec_d &moment_f_in)
 {
 	for(int s=0; s<N_S; s++)  moment_f[s] = moment_f_in[s];
 
@@ -590,7 +590,7 @@ void HybQMC::opt_n_mc(double accept_seg, double accept_shift)
 	// increase # of updates when ave_k is small
 // 	double ave_tot_k = PQ.ave_ktot;
 	double ave_tot_k = sqrt( K_TOT_MIN * K_TOT_MIN + PQ.ave_ktot * PQ.ave_ktot );
-	if( K_TOT_MIN )  ave_tot_k = MIN( ave_tot_k, (double)K_TOT_MIN * PQ.ave_ktot );
+	if( K_TOT_MIN )  ave_tot_k = std::min( ave_tot_k, (double)K_TOT_MIN * PQ.ave_ktot );
 	// for high-T, to avoid a huge number of updates
 
 	// correction factor:  [1:MAX_R_CORR]
@@ -613,9 +613,9 @@ void HybQMC::opt_n_mc(double accept_seg, double accept_shift)
 			}
 			kurt += ( m4 / (m2*m2) - 3.) / double(N_S);
 		}
-		double corr2 = MAX(1.+ kurt, 1.);  // corr2 > 1
+		double corr2 = std::max(1.+ kurt, 1.);  // corr2 > 1
 
-		corr_fac = MIN(corr1 * corr2, (double)MAX_R_CORR);  // 1 <= corr_fac <= MAX_R_CORR
+		corr_fac = std::min(corr1 * corr2, (double)MAX_R_CORR);  // 1 <= corr_fac <= MAX_R_CORR
 		if(my_rank==0 && DISPLAY){
 			printf("\n correction factor\n");
 			printf("  %.2lf * %.2lf --> %.2lf", corr1, corr2, corr_fac);
@@ -864,7 +864,8 @@ inline void HybQMC::measure_sp()
 
 	for(int s=0; s<N_S; s++){
 		// double len = tau_length(S[s]);
-		double len = S[s].length();
+		// double len = S[s].length();
+		double len = tau_length(S[s], prm.beta);
 		B.f_number[s] += len * (double)w_sign;
 		B.occup_tot += len * (double)w_sign;
 		B.occup_mom += len * moment_f[s] * (double)w_sign;
@@ -1318,7 +1319,7 @@ static inline void average_sub(double &msr, double &msr_err, int n_bin, double s
 // 	msr_err = sqrt(msr_err - msr*msr) * sqrt( (double)n_bin / (double)(n_bin-1) );
 //
 // }
-static inline void average_sub(complex<double> &msr, complex<double> &msr_err, int n_bin, double sign)
+static inline void average_sub(std::complex<double> &msr, std::complex<double> &msr_err, int n_bin, double sign)
 {
 	msr /= (double)n_bin;
 	msr_err /= (double)n_bin;
@@ -1480,7 +1481,7 @@ inline void HybQMC::average_sp(int n_bin)
 	// self-energy
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_TAU/2; i++){
-			complex<double> i_omega_f = IMAG * (double)(2*i+1) * M_PI / prm.beta;
+			std::complex<double> i_omega_f = IMAG * (double)(2*i+1) * M_PI / prm.beta;
 
 // 			SP[s].Gf0_omega[i] = 1.0 / (i_omega_f - prm.ef[s] - Delta_omega[i]);
 // 			SP[s].Gf0_omega[i] = 1.0 / (i_omega_f - prm.ef[s] - Delta_omega[i] - prm.U*0.5);
@@ -1838,7 +1839,7 @@ void HybQMC::add_seg(int sigma, int anti)
 				double l_max_temp;
 // 				if( reject_create_seg(&S[s_ref[r]], tau2, i_tau2_temp, l_max_temp) )  return;
 				if( reject_create_seg(S[s_ref[r]], tau_r, i_tau_rtemp, l_max_temp, prm.beta) )  return;
-				l_max = MIN(l_max, l_max_temp);
+				l_max = std::min(l_max, l_max_temp);
 			}
 		}
 
@@ -1988,7 +1989,7 @@ void HybQMC::rem_seg(int sigma, int anti)
 // 				double tau2 = F->tau2[i_tau2];
 				double tau_r = (*F_tau_r)[i_tau_r];
 				reject_create_seg(S[s_ref[r]], tau_r, i_tau_rtemp, l_max_temp, prm.beta);
-				l_max = MIN(l_max, l_max_temp);
+				l_max = std::min(l_max, l_max_temp);
 			}
 		}
 		if( prm.UINF && anti ){
@@ -2210,7 +2211,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 					// int i_tau2_temp = tau_order(p_S->tau2, p_S->k, F->tau1[i_tau1]);
 					int i_tau2_temp = tau_order(p_S->tau2, F->tau1[i_tau1]);
 					double l_max_temp = p_S->tau2[i_tau2_temp] - F->tau2[i_tau1];
-					l_max = MIN(l_max, l_max_temp);
+					l_max = std::min(l_max, l_max_temp);
 				}
 			}
 		}
@@ -2457,7 +2458,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 					i_tau1_temp = (i_tau1_temp - 1 + p_S->k) % p_S->k;
 					double l_max_temp = F->tau1[i_tau2] - p_S->tau1[i_tau1_temp];
 					if( l_max_temp < 0 )  l_max_temp += prm.beta;
-					l_max = MIN(l_max, l_max_temp);
+					l_max = std::min(l_max, l_max_temp);
 				}
 			}
 		}

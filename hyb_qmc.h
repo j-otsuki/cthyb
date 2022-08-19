@@ -26,10 +26,10 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #define HYB_QMC_MPI 1
 #define PHONON 0  // Holstein model
 
-#define N_S 2  // number of local states
-#define N_TP 32  // two-particle, non-linear mesh used in measurement of two-particle responce function
-#define N_TP2 256  // two-particle, linear mesh to perform FFT
-#define N_TP_W 10  // two-particle, w-sampling
+// #define N_S 2  // number of local states
+// #define N_TP 32  // two-particle, non-linear mesh used in measurement of two-particle responce function
+// #define N_TP2 256  // two-particle, linear mesh to perform FFT
+// #define N_TP_W 10  // two-particle, w-sampling
 
 #define TEST_MODE 0
 #define DISPLAY 1
@@ -40,7 +40,8 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 const unsigned long RAND_SEED = 0;  // 0: random (time),  >0: fixed number
 const int N_WARMUP = 1000000;
 const int MAX_R_CORR = 0;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
-const int K_TOT_MIN = 20 * N_S;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
+// const int K_TOT_MIN = 20 * N_S;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
+const int K_TOT_MIN = 0;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
 
 #if HYB_QMC_MPI
 #include <mpi.h>
@@ -70,8 +71,10 @@ double *TP_tau;  // [N_TP+1]
 
 struct hyb_qmc_params{
 // 	double V_sqr;
-	double ef[N_S];
-	double U[N_S][N_S];  // symmetric, diagonal is not used
+	// double ef[N_S];
+	vec_d ef;  // [N_S]
+	// double U[N_S][N_S];  // symmetric, diagonal is not used
+	vec_vec_d U;  // [N_S][N_S], symmetric, diagonal is not used
 	double beta;
 	int UINF;
 	double w_ph;  // phonon frequency
@@ -164,10 +167,13 @@ struct phys_quant{
 	};
 };
 
-struct phonon_g{
-	complex<double> d_omega[N_TP2];
-	double occup;
-};
+using t_sp = std::vector<struct single_particle>;
+using t_tp = std::vector<std::vector<struct two_particle> >;
+
+// struct phonon_g{
+// 	complex<double> d_omega[N_TP2];
+// 	double occup;
+// };
 
 struct num_mc{
 // 	int N_WARMUP;
@@ -184,10 +190,10 @@ struct num_mc{
 class HybQMC{
 public:
 	// initializing : allocating memory and creating log file
-	HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed);
+	HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed);
 	~HybQMC();
 
-	void get(struct phys_quant **p_PQ, struct single_particle **p_SP, double **p_TP_tau, struct two_particle ***p_TP, struct two_particle **p_TP_sp, struct two_particle **p_TP_ch, struct phonon_g **D);
+	// void get(struct phys_quant **p_PQ, struct single_particle **p_SP, double **p_TP_tau, struct two_particle ***p_TP, struct two_particle **p_TP_sp, struct two_particle **p_TP_ch);
 
 	// setting number of MC steps
 	void set_nmc(struct num_mc n_mc_in);
@@ -203,11 +209,20 @@ public:
 	// void set_G0(complex<double> G0_omega[N_S][N_TAU/2], double V_sqr[N_S]);
 
 	// [Optional] setting moment, which is used for susceptibility calculations
-	void set_moment(double moment_f_in[N_S]);
+	// void set_moment(double moment_f_in[N_S]);
+	void set_moment(vec_d &moment_f_in);
 
 	// evaluating physical quantities via MC sampling
 	//  flag_tp: 0 only single-particle, 1 single- and two-particle
 	void eval(int flag_tp);
+
+	// get
+	t_sp& get_SP() { return SP; };
+	t_tp& get_TP() { return TP; };
+	vec_d& get_TP_tau() { return TP_tau; };
+	two_particle& get_TP_sp() { return TP_sp; };
+	two_particle& get_TP_ch() { return TP_ch; };
+	phys_quant& get_PQ() { return PQ; };
 
 	// free memory
 	// void final();
@@ -216,6 +231,10 @@ public:
 	void fprint_log(char *str);
 
 private:
+	int N_TAU;
+	int N_K;
+	int N_S;
+	int N_TP, N_TP2;
 
 	struct hyb_qmc_params prm;
 	struct num_mc n_mc;
@@ -224,12 +243,12 @@ private:
 	std::vector<Operators> S;
 	std::vector<struct green_func_0> Delta;
 
-	std::vector<struct single_particle> SP;
-	std::vector<std::vector<struct two_particle> > TP;
-	struct two_particle TP_sp, TP_ch;
+	t_sp SP;
+	t_tp TP;
+	two_particle TP_sp, TP_ch;
 	// struct two_particle_tr TP_tr;
-	struct phys_quant PQ;
-	struct phonon_g D;
+	phys_quant PQ;
+	// struct phonon_g D;
 
 	// static double TP_tau[N_TP+1];
 	vec_d TP_tau;
@@ -240,7 +259,17 @@ private:
 	// static double moment_f[N_S];
 	vec_d moment_f;
 
-	static int w_sign;
+	int w_sign;
+
+	// If N_ADD<0 and/or N_SHIFT<0,
+	// N_ADD and/or N_SHIFT is optimized according to
+	//   N_ADD = (ave_tot_k / acceptance) * R_ADD * corr_fac
+	//   N_SHIFT = (2 * ave_tot_k / acceptance) * R_SHIFT * corr_fac
+	// The most part of the configuration is expected to be updated, when R_ADD=1 or R_SHIFT=1.
+	double R_ADD;  // set by R_ADD = -N_ADD / 10
+	double R_SHIFT;  // set by R_SHIFT = -N_SHIFT / 10
+	int N_ADD_MIN, N_SHIFT_MIN;  // N_S, 1
+	// correction factor: [1:MAX_R_CORR]  determined by P(k)
 
 	void eval_acceptance(double n_sample, int n_add, int n_shift);
 	void sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_shift);

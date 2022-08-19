@@ -15,6 +15,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #include <complex>
 #include <ctime>
 #include <string.h>
+#include <vector>
 // #include <gsl/gsl_integration.h>
 // #include <gsl/gsl_spline.h>
 // #include <gsl/gsl_sf_erf.h>
@@ -25,13 +26,13 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 // #include "pade.h"
 #include "gtau.h"
 
-using namespace std;
+// using namespace std;
 
-#define N_K 1024  // maximum number of k
-#define N_TAU 1024  // discretization of beta
+// #define N_K 1024  // maximum number of k
+// #define N_TAU 1024  // discretization of beta
 #define DATA_DIR "output/"
 
-#define DOS 0
+// #define DOS 0
 // 0: constant
 // 1: semicircle (Bethe lattice)
 // 2: Gaussian (hyper-cubic lattice)
@@ -41,7 +42,7 @@ using namespace std;
 // 6: d=5 tight-binding band (N_L=8, 16)
 // -1: single bath
 
-#define N_L 32  // # of k-points between k=0 and PI
+// #define N_L 32  // # of k-points between k=0 and PI
 
 const double ACCURACY_FILLING = 1e-8;
 const int FILLING_ITER_MAX = 100;
@@ -55,11 +56,11 @@ const int FILLING_ITER_MAX = 100;
 
 #ifndef _IMAG
 #define _IMAG
-const complex<double> IMAG(0, 1.0);
+const std::complex<double> IMAG(0, 1.0);
 #endif // _IMAG
 
-#define MAX(a,b)  ((a) > (b) ? (a) : (b))
-#define MIN(a,b)  ((a) > (b) ? (b) : (a))
+// #define MAX(a,b)  ((a) > (b) ? (a) : (b))
+// #define MIN(a,b)  ((a) > (b) ? (b) : (a))
 
 
 #define _LAPACK
@@ -67,8 +68,8 @@ const complex<double> IMAG(0, 1.0);
 extern "C"{
 	void dgetrf_(long*, long*, double*, long*, long*, long*);
 	void dgetri_(long*, double*, long*, long*, double*, long*, long*);
-	void zgetrf_(long*, long*, complex<double>*, long*, long*, long*);
-	void zgetri_(long*, complex<double>*, long*, long*, complex<double>*, long*, long*);
+	void zgetrf_(long*, long*, std::complex<double>*, long*, long*, long*);
+	void zgetri_(long*, std::complex<double>*, long*, long*, std::complex<double>*, long*, long*);
 }
 #endif // _LAPACK
 
@@ -116,6 +117,7 @@ double distrib_fermi_boltz(double x, double y);
 
 
 int tau_order(double *, int, double);
+int tau_order(std::vector<double>&, double);
 int tau_position(double *, int, double);
 
 
@@ -156,17 +158,17 @@ void tau_mesh_nonlinear_boson(double *tau, int n_tau1, int n_tau2, double beta);
 void tau_mesh_nonlinear_fermion(double *tau, int n_tau1, int n_tau2, double beta);
 
 
-struct cond_op{
-	int k;  // number of segments
-	double tau1[N_K];  // for f-annihilation (c-creation) operator
-	double tau2[N_K];  // for f-creation (c-annihilation) operator
-	double mat_M[N_K][N_K];  // [tau1][tau2]
-	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
-};
+// struct cond_op{
+// 	int k;  // number of segments
+// 	double tau1[N_K];  // for f-annihilation (c-creation) operator
+// 	double tau2[N_K];  // for f-creation (c-annihilation) operator
+// 	double mat_M[N_K][N_K];  // [tau1][tau2]
+// 	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
+// };
 
 
 void phase_init(struct phase &PHASE);
-complex<double> phase_interp(struct phase &PHASE, double x);
+std::complex<double> phase_interp(struct phase &PHASE, double x);
 void phase_free(struct phase &PHASE);
 
 
