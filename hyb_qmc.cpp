@@ -10,6 +10,8 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 static const char tag[64] = "v2.06";
 
+#include <stdio.h>
+#include <iostream>
 #include "hyb_qmc.h"
 // #include "ct_qmc_share.h"
 // #include "matrix_update.h"
@@ -109,7 +111,7 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 		printf(" N_S = %d\n", N_S);
 		printf(" (N_TAU, N_TP, N_TP2) = (%d, %d, %d)\n", N_TAU, N_TP, N_TP2);
 		printf(" N_WARMUP = %d\n", N_WARMUP);
-		printf(" PHONON = %d\n", PHONON);
+		// printf(" PHONON = %d\n", PHONON);
 		// printf(" CHI_TR = %d\n", CHI_TR);
 		printf(" seed = %ld\n", seed);
 		printf(" MAX_R_CORR = %d\n", MAX_R_CORR);
@@ -151,14 +153,11 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	//
 	// allocate memory
 	//
+	Delta.resize(n_s);  // default constructor
 	for(int s=0; s<N_S; s++)  G0_alloc(Delta[s], N_TAU);
-
-
 
 	S.resize(n_s);
 	for(int i=0; i<n_s; i++)  S[i] = Operators(N_K);
-
-	Delta.resize(n_s);  // default constructor
 
 	SP.resize(n_s);
 	for(int i=0; i<n_s; i++)  SP[i] = single_particle(n_tau);
@@ -184,7 +183,6 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	TP_tau.resize(n_tp+1);
 	// Delta_omega
 
-
 	// SP = (single_particle *)malloc(N_S*sizeof(single_particle));
 
 	// for(int s=0; s<N_S; s++){
@@ -203,7 +201,8 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	//  ave = 0
 	//  curie = 1.
 	//
-	for(int s=0; s<N_S; s++){
+	moment_f.resize(n_s);
+	for(int s=0; s<n_s; s++){
 		moment_f[s] = (s%2) * 2 - 1;  // -1 for even, +1 for odd
 	}
 	if( N_S % 2 )  moment_f[N_S-1] = 0;
@@ -243,7 +242,7 @@ HybQMC::~HybQMC()
 // 	*p_D = &D;
 // }
 
-void HybQMC::set_nmc(struct num_mc n_mc_in)
+void HybQMC::set_nmc(struct num_mc& n_mc_in)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
@@ -266,7 +265,7 @@ void HybQMC::set_nmc(struct num_mc n_mc_in)
 	N_SHIFT_MIN = 1;
 }
 
-void HybQMC::set_params(struct hyb_qmc_params prm_in)
+void HybQMC::set_params(struct hyb_qmc_params& prm_in)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
@@ -278,6 +277,42 @@ void HybQMC::set_params(struct hyb_qmc_params prm_in)
 	}
 
 	prm = prm_in;
+	// copy
+	// prm.ef = prm_in.ef;
+	// printf("1a\n");
+	// prm.beta = prm_in.beta;
+	// printf("1b\n");
+	// prm.ef = prm_in.ef;
+	// printf("1c\n");
+	// prm.U = prm_in.U;
+	// printf("1d\n");
+
+	// check size
+	// if(prm.ef.size() != N_S){
+	// 	fprintf(stderr, "Input Error: ef ");
+	// 	MPI_Abort(MPI_COMM_WORLD, 1);
+	// }
+	// if( prm.U.size() != N_S){
+
+	// }
+	// if( prm.U[0].size)
+
+	if(my_rank==0 && DISPLAY){
+		printf("  beta = %.3lf\n", prm.beta);
+		printf("  ef =\n    ");
+		for(int i=0; i<prm.ef.size(); i++){
+			printf(" %.3lf", prm.ef[i]);
+		}
+		printf("\n");
+		printf("  U =\n");
+		for(int i=0; i<prm.U.size(); i++){
+			printf("    ");
+			for(int j=0; j<prm.U[i].size(); j++){
+				printf(" %.3lf", prm.U[i][j]);
+			}
+			printf("\n");
+		}
+	}
 
 	#if PHONON
 	for(int s1=0; s1<N_S; s1++){
@@ -292,7 +327,7 @@ void HybQMC::set_params(struct hyb_qmc_params prm_in)
 
 //  V_sqr : integrated value of Delta(w), or iw*Delta(iw) with w->inf
 // void HybQMC::set_Delta(complex<double> Delta_omega_in[N_S][N_TAU/2], double V_sqr[N_S])
-void HybQMC::set_Delta(vec_vec_c &Delta_omega_in, vec_d &V_sqr)
+void HybQMC::set_Delta(vec_vec_c& Delta_omega_in, vec_d& V_sqr)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
@@ -303,9 +338,11 @@ void HybQMC::set_Delta(vec_vec_c &Delta_omega_in, vec_d &V_sqr)
 		printf("\nHYBQMC_SET_DELTA\n");
 	}
 
+	Delta_omega = Delta_omega_in;  // copy
+
 	for(int s=0; s<N_S; s++){
 		// for(int i=0; i<N_TAU/2; i++)  Delta_omega[s][i] = Delta_omega_in[s][i];
-		Delta_omega[s] = Delta_omega_in[s];  // copy
+		// Delta_omega[s] = Delta_omega_in[s];  // copy
 
 		G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sqr[s]);
 	}
@@ -325,7 +362,7 @@ void HybQMC::set_Delta(vec_vec_c &Delta_omega_in, vec_d &V_sqr)
 // }
 
 // [Optional]
-void HybQMC::set_moment(vec_d &moment_f_in)
+void HybQMC::set_moment(vec_d& moment_f_in)
 {
 	for(int s=0; s<N_S; s++)  moment_f[s] = moment_f_in[s];
 
@@ -714,13 +751,20 @@ void HybQMC::init_measure()
 	PQ.ave_sign = 0;
 	PQ.ave_sign_err = 0;
 
-	for(int i=0; i<N_K*N_S; i++)  PQ.Z_ktot[i] = PQ.Z_ktot_err[i] = 0;
+	// for(int i=0; i<N_K*N_S; i++)  PQ.Z_ktot[i] = PQ.Z_ktot_err[i] = 0;
 	PQ.ave_ktot = PQ.ave_ktot_err = 0;
 
-	for(int s=0; s<N_S; s++){
-		for(int i=0; i<N_K; i++)  PQ.Z_k[s][i] = PQ.Z_k_err[s][i] = 0;
-		PQ.ave_k[s] = PQ.ave_k_err[s] = 0;
-	}
+	// for(int s=0; s<N_S; s++){
+	// 	for(int i=0; i<N_K; i++)  PQ.Z_k[s][i] = PQ.Z_k_err[s][i] = 0;
+	// 	PQ.ave_k[s] = PQ.ave_k_err[s] = 0;
+	// }
+	zeros(PQ.Z_k);
+	zeros(PQ.Z_k_err);
+	zeros(PQ.Z_ktot);
+	zeros(PQ.Z_ktot_err);
+	zeros(PQ.ave_k);
+	zeros(PQ.ave_k_err);
+
 
 	//
 	// SP
@@ -900,7 +944,7 @@ inline void HybQMC::measure_sp()
 
 
 // n > 0
-static inline void arrange_1array(Operators &F, double *tau, int *flag_exist, int n, double beta)
+static inline void arrange_1array(Operators& F, double* tau, int* flag_exist, int n, double beta)
 {
 	// double *temp_tau1, *temp_tau2;
 	std::vector<double> *temp_tau1, *temp_tau2;
@@ -1103,7 +1147,7 @@ inline void HybQMC::averagebin_stat(int n_sample)
 	PQ.ave_ktot += B_ave_ktot;
 	PQ.ave_ktot_err += pow(B_ave_ktot, 2);
 
-	double B_ave_k[N_S] = {0};
+	std::vector<double> B_ave_k(N_S);  // initialized by 0
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_K; i++){
 			double B_n_k = double(B_TOT.n_k[s][i]) / double(sum_n_k);

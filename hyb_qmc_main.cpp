@@ -10,9 +10,14 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 static const char tag[64] = "v1.12";
 
-#include <iostream>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/optional.hpp>
 #include "hyb_qmc.h"
+#include "vector_type.hpp"
 // #include "green_func_0.h"
 // #include "dmft.h"
 #include "fft.h"
@@ -32,12 +37,12 @@ using namespace std;
 // int N_PADE = std::min(N_TAU/2, 8192);
 
 
-struct hyb_qmc_params prm;
+// struct hyb_qmc_params prm;
 // double prm_ave_n, prm_chem_pot;
 // double prm_V_sqr[N_S], prm_V_sqr_imp[N_S], prm_D, prm_f_disp=0;
 // double prm_E_f[N_S], prm_E_c[N_S];
 
-struct num_mc n_mc;
+// struct num_mc n_mc;
 
 // struct phys_quant *PQ;
 // struct single_particle *SP;
@@ -220,14 +225,199 @@ void init_params()
 }
 */
 
-void read_params()
-{
 
+class InputParams{
+public:
+	// [model]
+	int n_s;
+	string file_Delta, file_U, file_ef, file_Vsq;
+	double beta;
+
+	// [control]
+	int n_tau;
+	int n_tp, n_tp2;
+	int rand_seed;
+	int max_order;
+
+	// [MC]
+	int n_bin, n_msr, n_add, n_shift;
+
+	// methods
+	void read_params(string& file_ini);
+	void summary();
+};
+
+void InputParams::read_params(string& file_ini)
+{
+    boost::property_tree::ptree pt;
+
+	cout << "Reading file '" << file_ini << "'" << endl;
+	try{
+	    boost::property_tree::read_ini(file_ini, pt);
+
+		// [model]
+		n_s = pt.get<int>("model.n_s");
+		file_Delta = pt.get<string>("model.file_Delta");
+		file_Vsq = pt.get<string>("model.file_Vsq");
+		file_U = pt.get<string>("model.file_U");
+		file_ef = pt.get<string>("model.file_ef");
+		beta = pt.get<double>("model.beta");
+
+		// [control]
+		n_tau = pt.get<int>("control.n_tau");
+		n_tp = pt.get<int>("control.n_tp");
+		n_tp2 = pt.get<int>("control.n_tp2");
+		rand_seed = pt.get<int>("control.rand_seed", 0);
+		max_order = pt.get<int>("control.max_order", 1024);
+
+		// [MC]
+		n_bin = pt.get<int>("MC.n_bin", 10);
+		n_msr = pt.get<int>("MC.n_msr");
+		n_add = pt.get<int>("MC.n_add", -4);
+		n_shift = pt.get<int>("MC.n_shift", -4);
+	}
+	catch(boost::property_tree::ptree_error& e){
+		cerr << "ERROR: " << e.what() << endl;
+		MPI_Abort(MPI_COMM_WORLD, 1);
+	}
+}
+
+void InputParams::summary()
+{
+	cout << "\nSummary of input parameters" << endl;
+	cout << "=====================================" << endl;
+	cout << "[model]" << endl;
+	cout << "n_s = " << n_s << endl;
+	cout << "file_Delta = " << file_Delta << endl;
+	cout << "file_Vsq = " << file_Vsq << endl;
+	cout << "file_U = " << file_U << endl;
+	cout << "file_ef = " << file_ef << endl;
+	cout << "beta = " << beta << endl;
+
+	cout << "\n[control]" << endl;
+	cout << "n_tau = " << n_tau << endl;
+	cout << "n_tp = " << n_tp << endl;
+	cout << "n_tp2 = " << n_tp2 << endl;
+	cout << "rand_seed = " << rand_seed << endl;
+	cout << "max_order = " << rand_seed << endl;
+
+	cout << "\n[MC]" << endl;
+	cout << "n_bin = " << n_bin << endl;
+	cout << "n_msr = " << n_msr << endl;
+	cout << "n_add = " << n_add << endl;
+	cout << "n_shift = " << n_shift << endl;
+	cout << "=====================================" << endl;
 }
 
 // ============================================================================
 
-void print_pq(int num, phys_quant& PQ, t_sp& SP)
+// return data[row][col]
+// vec_vec_d read_data(string& file_data, int n_row, int n_col)
+// {
+// 	vec_vec_d data(n_row, n_col);
+// 	ifstream ifs(file_data);
+// 	if (!ifs) {
+// 		cerr << "ERROR: File '"<< file_data << "'not found" << endl;
+// 		MPI_Abort(MPI_COMM_WORLD, 1);
+// 	}
+
+// 	for(int i=0; i<n_row; i++){
+// 		std::string buf;
+// 		getline(ifs, buf);
+// 		cout << buf << endl;
+// 		for(int j=0; j<n_col; j++){
+// 			sscanf("%lf", &data[i][j]);
+// 		}
+// 	}
+// }
+vec_vec_d load(const string& file_data, int n_row, int n_col)
+{
+	FILE *fp;
+	// if( (fp = fopen(file_data.c_str(), "r")) == NULL ){
+	// 	printf("'%s' not found\n", file_data.c_str());
+	// 	MPI_Abort(MPI_COMM_WORLD, 1);
+	// }
+	if( (fp = fopen(file_data.c_str(), "r")) == NULL ){
+		// printf("'%s' not found\n", file_data);
+		cout << "'" << file_data << "' not found" << endl;
+		MPI_Abort(MPI_COMM_WORLD, 1);
+	}
+
+	vec_vec_d data;
+	resize(data, n_row, n_col);
+
+	double data_line[256];
+	for(int i=0; i<n_row; i++){
+		if( read_data(fp, data_line) != n_col ){
+			// printf("ERROR: Invalid file '%s'\n", file_data);
+			cout << "ERROR: Invalid file '" << file_data << "'" << endl;
+			fflush(stdout);
+			MPI_Abort(MPI_COMM_WORLD, 1);
+		}
+
+		for(int j=0; j<n_col; j++){
+			data[i][j] = data_line[j];
+		}
+	}
+	return data;
+}
+
+vec_d read_ef(const string& file_data, int n_s)
+{
+	cout << "\nRead file '" << file_data << "'" << endl;
+	vec_vec_d data = load(file_data, n_s, 1);
+	cout << "  done" << endl;
+
+	vec_d ef(n_s);
+	for(int i=0; i<n_s; i++){
+		ef[i] = data[i][0];
+	}
+	return ef;
+}
+
+vec_vec_d read_U(const string& file_data, int n_s)
+{
+	cout << "\nRead file '" << file_data << "'" << endl;
+	vec_vec_d data = load(file_data, n_s, n_s);
+	cout << "  done" << endl;
+
+	return data;
+}
+
+vec_vec_c read_Delta(const string& file_data, int n_s, int n_w)
+{
+	cout << "\nRead file '" << file_data << "'" << endl;
+	// cout << "n_s=" << n_s << " , n_w=" << n_w << endl;
+	vec_vec_d data = load(file_data, n_w, 2*n_s);
+	cout << "  done" << endl;
+
+	vec_vec_c Delta_omega;
+	resize(Delta_omega, n_s, n_w);
+	for(int s=0; s<n_s; s++){
+		for(int i=0; i<n_w; i++){
+			Delta_omega[s][i] = complex<double>(data[i][2*s], data[i][2*s+1]);
+		}
+	}
+	return Delta_omega;
+}
+
+vec_d read_Vsq(const string& file_data, int n_s)
+{
+	cout << "\nRead file '" << file_data << "'" << endl;
+	vec_vec_d data = load(file_data, n_s, 1);
+	cout << "  done" << endl;
+
+	vec_d Vsq(n_s);
+	for(int i=0; i<n_s; i++){
+		Vsq[i] = data[i][0];
+	}
+	return Vsq;
+}
+
+
+// ============================================================================
+
+void print_pq(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 {
 	int N_S = SP.size();
 
@@ -296,7 +486,7 @@ void print_statistics(int num, phys_quant& PQ)
 	fclose(fp);
 }
 
-void print_single_particle(int num, phys_quant& PQ, t_sp& SP)
+void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 {
 	int N_S = SP.size();
 	int N_TAU = SP[0].Gf_tau.size() - 1;
@@ -579,51 +769,66 @@ int main(int argc, char* argv[])
 // 	MPI_Comm_size(MPI_COMM_WORLD, &process_num);
 	#endif // HYB_QMC_MPI
 
-	cout << argc << endl;
+	string file_ini;
+	switch(argc){
+		case 2:
+			file_ini = string(argv[1]);
+			break;
+		case 1:
+			cerr << "ERROR: Missing argument. Input file name required." << endl;
+			exit(1);
+		default:
+			cerr << "ERROR: Too many arguments. Input file name required." << endl;
+			exit(1);
+	}
 
 	// init_params();
-	read_params();
-
-
+	InputParams in;
+	// cout << file_ini << endl;
+	// read_params(file_ini);
+	in.read_params(file_ini);
+	in.summary();
 
 	// hybqmc_init(&PQ, &SP, &TP_tau, &TP, &TP_sp, &TP_ch, &TP_tr, &D);
 
-	int max_order = 1024;
-	int n_s = 2;
-	int n_tau = 1024;
-	int n_tp = 32;
-	int n_tp2 = 256;
-	int rand_seed = 0;
-	HybQMC Q(max_order, n_s, n_tau, n_tp, n_tp2, rand_seed);
+	HybQMC Q(in.max_order, in.n_s, in.n_tau, in.n_tp, in.n_tp2, in.rand_seed);
 
 	// hybqmc_set_nmc(n_mc);
+	num_mc n_mc;
+	n_mc.N_MSR = in.n_msr;
+	n_mc.N_BIN = in.n_bin;
+	n_mc.N_ADD = in.n_add;
+	n_mc.N_SHIFT = in.n_shift;
 	Q.set_nmc(n_mc);
 
 	// G = new dmft_green_func [N_S];
 
-
 	clock_t time_start = clock();
 
-// 	hybqmc_set_params(prm);
+	hyb_qmc_params prm;
+	prm.beta = in.beta;
+	prm.ef = read_ef(in.file_ef, in.n_s);
+	prm.U = read_U(in.file_U, in.n_s);
+	Q.set_params(prm);
 
 	// Delta_omega.resize(n_s, int(n_tau/2));
-	vec_vec_c Delta_omega;  // [N_S][N_TAU/2]
-	resize(Delta_omega, n_s, int(n_tau/2));
+	// vec_vec_c Delta_omega;  // [N_S][N_TAU/2]
+	// resize(Delta_omega, in.n_s, int(in.n_tau/2));
 	// for(int s=0; s<N_S; s++)  G0_omega_calc(G0_omega[s], prm.beta, prm_D);
 	//	G0_omega_calc(G0_omega, N_S, prm.beta, prm_D, flag_ensemble, prm_ave_n, prm_chem_pot, prm_E_c);
+	// vector<double> prm_V_sqr(in.n_s);
+
+
+	// hybqmc_set_G0(G0_omega, prm_V_sqr_imp);
+	// read_Delta(in.file_Delta, in.n_s, int(in.n_tau/2));
+	vec_vec_c Delta_omega = read_Delta(in.file_Delta, in.n_s, in.n_tau/2);
+	vec_d Vsq = read_Vsq(in.file_Vsq, in.n_s);
+	Q.set_Delta(Delta_omega, Vsq);
 
 	int num = 0;
 	if(my_rank==0){
 		print_Delta(num);
 	}
-
-	// for(int s=0; s<N_S; s++)  prm.ef[s] = prm_E_f[s] - prm_chem_pot;
-	// hybqmc_set_params(prm);
-	Q.set_params(prm);
-
-	// hybqmc_set_G0(G0_omega, prm_V_sqr_imp);
-	vector<double> prm_V_sqr(n_s);
-	Q.set_Delta(Delta_omega, prm_V_sqr);
 
 	// hybqmc_eval(flag_tp);
 	Q.eval(flag_tp);
@@ -636,9 +841,9 @@ int main(int argc, char* argv[])
 	phys_quant PQ = Q.get_PQ();
 
 	if(my_rank==0){
-		print_pq(num, PQ, SP);
+		print_pq(num, prm, PQ, SP);
 		print_statistics(num, PQ);
-		print_single_particle(num, PQ, SP);
+		print_single_particle(num, prm, PQ, SP);
 
 		if(flag_tp){
 			print_two_particle(num, PQ, TP, TP_tau, TP_sp, TP_ch);

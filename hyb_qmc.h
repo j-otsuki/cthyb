@@ -77,8 +77,8 @@ struct hyb_qmc_params{
 	vec_vec_d U;  // [N_S][N_S], symmetric, diagonal is not used
 	double beta;
 	int UINF;
-	double w_ph;  // phonon frequency
-	double g;  // electron-phonon coupling
+	// double w_ph;  // phonon frequency
+	// double g;  // electron-phonon coupling
 
 	hyb_qmc_params(){
 		UINF = 0;
@@ -149,9 +149,9 @@ struct two_particle{
 // };
 struct phys_quant{
 	double ave_sign, ave_sign_err;
-	vec_vec_d Z_k, Z_k_err;
-	vec_d Z_ktot, Z_ktot_err;
-	vec_d ave_k, ave_k_err;
+	vec_vec_d Z_k, Z_k_err;  // [N_S][N_K]
+	vec_d Z_ktot, Z_ktot_err;  // [N_S*N_K]
+	vec_d ave_k, ave_k_err;  // [N_S]
 	double ave_ktot, ave_ktot_err;
 	double occup_tot, occup_tot_err;
 	double occup_mom, occup_mom_err;
@@ -164,6 +164,8 @@ struct phys_quant{
 		resize(Z_k_err, n_s, n_k);
 		Z_ktot.resize(n_s*n_k);
 		Z_ktot_err.resize(n_s*n_k);
+		ave_k.resize(n_s);
+		ave_k_err.resize(n_s);
 	};
 };
 
@@ -196,21 +198,21 @@ public:
 	// void get(struct phys_quant **p_PQ, struct single_particle **p_SP, double **p_TP_tau, struct two_particle ***p_TP, struct two_particle **p_TP_sp, struct two_particle **p_TP_ch);
 
 	// setting number of MC steps
-	void set_nmc(struct num_mc n_mc_in);
+	void set_nmc(struct num_mc& n_mc_in);
 
 	// setting parameter set
-	void set_params(struct hyb_qmc_params prm_in);
+	void set_params(struct hyb_qmc_params& prm_in);
 
 	// setting hybridization function
 	//  V_sqr : integrated value of Delta(w), or iw*Delta(iw) with w->inf
 	// void set_Delta(complex<double> Delta_omega[N_S][N_TAU/2], double V_sqr[N_S]);
-	void set_Delta(vec_vec_c &Delta_omega, vec_d &V_sqr);
+	void set_Delta(vec_vec_c& Delta_omega, vec_d& V_sqr);
 	//  Delta = V_sqr * G0
 	// void set_G0(complex<double> G0_omega[N_S][N_TAU/2], double V_sqr[N_S]);
 
 	// [Optional] setting moment, which is used for susceptibility calculations
 	// void set_moment(double moment_f_in[N_S]);
-	void set_moment(vec_d &moment_f_in);
+	void set_moment(vec_d& moment_f_in);
 
 	// evaluating physical quantities via MC sampling
 	//  flag_tp: 0 only single-particle, 1 single- and two-particle
@@ -295,7 +297,7 @@ private:
 	void func_averagebin2(int);
 	// void (*func_averagebin[3])(int) = {func_averagebin0, func_averagebin1, func_averagebin2};
 
-	void fft_chi_after_interp(vec_d &chi_tau, vec_c &chi_omega);
+	void fft_chi_after_interp(vec_d& chi_tau, vec_c& chi_omega);
 	void average_stat(int n_bin);
 	void average_sp(int n_bin);
 	void average_tp(int n_bin);
