@@ -15,17 +15,23 @@ using vec_vec_vec_c = std::vector<std::vector<std::vector<std::complex<double> >
 template<class T>
 void zeros(std::vector<T> &x)
 {
-    for (const auto& ele : x) {
-        ele = 0;
-    }
+    std::fill(x.begin(), x.end(), 0);
 }
 
 template<class T>
 void zeros(std::vector<std::vector<T> > &x)
 {
-    for (const auto& row : x) {
-        for (const auto& ele : row) {
-            ele = 0;
+    for (const auto& x1 : x) {
+        std::fill(x1.begin(), x1.end(), 0);
+    }
+}
+
+template<class T>
+void zeros(std::vector<std::vector<std::vector<T> > > &x)
+{
+    for (const auto& x1 : x) {
+        for (const auto& x2 : x1) {
+            std::fill(x2.begin(), x2.end(), 0);
         }
     }
 }
@@ -34,7 +40,6 @@ template<class T>
 void resize(std::vector<std::vector<T> > &x, int n1, int n2)
 {
     x.resize(n1);
-    // for (const auto& x1 : x) {
     for (auto& x1 : x) {
         x1.resize(n2);
     }

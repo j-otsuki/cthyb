@@ -37,19 +37,20 @@ static const char tag[64] = "v2.06";
 
 // static int w_sign;
 
-static struct phys_quant_bin{
-	long int ave_sign;
-	unsigned long n_k[N_S][N_K];
-	unsigned long n_ktot[N_S*N_K];
-	double Gf[N_S][N_TAU+1];
-	double f_number[N_S];
-	int f_number_int[N_S];
-	double occup_tot, occup_mom;
-// 	double chi_sp[N_TP+1], chi_ch[N_TP+1];
-	double chi[N_S][N_S][N_TP+1];
-	double chi_tr1[2*N_TP2+1], chi_tr2[2*N_TP2+1];
-	complex<double> chi_omega[N_TP_W];
-} *B, *B_TOT;
+// static struct phys_quant_bin{
+// 	long int ave_sign;
+// 	unsigned long n_k[N_S][N_K];
+// 	unsigned long n_ktot[N_S*N_K];
+// 	double Gf[N_S][N_TAU+1];
+// 	double f_number[N_S];
+// 	int f_number_int[N_S];
+// 	double occup_tot, occup_mom;
+// // 	double chi_sp[N_TP+1], chi_ch[N_TP+1];
+// 	double chi[N_S][N_S][N_TP+1];
+// 	double chi_tr1[2*N_TP2+1], chi_tr2[2*N_TP2+1];
+// 	complex<double> chi_omega[N_TP_W];
+// } *B, *B_TOT;
+// *B, *B_TOT;
 
 
 // double tau[N_TAU+1];
@@ -193,9 +194,10 @@ HybQMC::HybQMC(int max_k, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed
 	// 	TP[s] = (two_particle *)malloc(N_S*sizeof(two_particle));
 	// }
 
-	B = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
-	B_TOT = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
-
+	// B = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
+	// B_TOT = (phys_quant_bin *)malloc(sizeof(phys_quant_bin));
+	B = phys_quant_bin(max_k, n_s, n_tau, n_tp);
+	B_TOT = phys_quant_bin(max_k, n_s, n_tau, n_tp);
 
 // 	*my_rank_out = my_rank;
 
@@ -228,8 +230,8 @@ HybQMC::~HybQMC()
 	for(int s=0; s<N_S; s++)  G0_free(Delta[s]);
 	// free(SP);
 	// for(int s=0; s<N_S; s++)  free(TP[s]);
-	free(B);
-	free(B_TOT);
+	// free(B);
+	// free(B_TOT);
 }
 
 // void HybQMC::get(struct phys_quant **p_PQ, struct single_particle **p_SP, double **p_TP_tau, struct two_particle ***p_TP, struct two_particle **p_TP_sp, struct two_particle **p_TP_ch, struct two_particle_tr **TP_tr, struct phonon_g **D)
@@ -776,40 +778,58 @@ void HybQMC::init_measure()
 	// }
 }
 
+// void HybQMC::init_measure_bin()
+// {
+// 	B->ave_sign = 0;
+
+// 	for(int i=0; i<N_K*N_S; i++)  B->n_ktot[i] = 0;
+// 	for(int s=0; s<N_S; s++){
+// 		for(int i=0; i<N_K; i++)  B->n_k[s][i] = 0;
+// 	}
+
+// 	for(int s=0; s<N_S; s++){
+// 		B->f_number[s] = 0;
+// 		B->f_number_int[s] = 0;
+
+// 		for(int i=0; i<=N_TAU; i++){
+// 			B->Gf[s][i] = 0;
+// 		}
+
+// 		for(int s1=0; s1<N_S; s1++){
+// 			for(int s2=0; s2<N_S; s2++){
+// 				for(int i=0; i<=N_TP; i++)  B->chi[s1][s2][i] = 0;
+// 			}
+// 		}
+// 	}
+// 	B->occup_tot = B->occup_mom = 0;
+
+// 	for(int i=0; i<=2*N_TP2; i++){
+// 		B->chi_tr1[i] = 0;
+// 		B->chi_tr2[i] = 0;
+// 	}
+// 	for(int i=0; i<N_TP_W; i++){
+// 		B->chi_omega[i] = 0;
+// 	}
+// }
+void HybQMC::phys_quant_bin::allzeros()
+{
+	ave_sign = 0;
+	occup_tot = occup_mom = 0;
+
+	// vector
+	zeros(n_ktot);
+	zeros(f_number);
+	zeros(f_number_int);
+
+	// Array2D, Array3D
+	n_k.zeros();
+	Gf.zeros();
+	chi.zeros();
+}
 void HybQMC::init_measure_bin()
 {
-	B->ave_sign = 0;
-
-	for(int i=0; i<N_K*N_S; i++)  B->n_ktot[i] = 0;
-	for(int s=0; s<N_S; s++){
-		for(int i=0; i<N_K; i++)  B->n_k[s][i] = 0;
-	}
-
-	for(int s=0; s<N_S; s++){
-		B->f_number[s] = 0;
-		B->f_number_int[s] = 0;
-
-		for(int i=0; i<=N_TAU; i++){
-			B->Gf[s][i] = 0;
-		}
-
-		for(int s1=0; s1<N_S; s1++){
-			for(int s2=0; s2<N_S; s2++){
-				for(int i=0; i<=N_TP; i++)  B->chi[s1][s2][i] = 0;
-			}
-		}
-	}
-	B->occup_tot = B->occup_mom = 0;
-
-	for(int i=0; i<=2*N_TP2; i++){
-		B->chi_tr1[i] = 0;
-		B->chi_tr2[i] = 0;
-	}
-	for(int i=0; i<N_TP_W; i++){
-		B->chi_omega[i] = 0;
-	}
+	B.allzeros();
 }
-
 //============================================================================
 //
 // MEASUREMENT
@@ -821,15 +841,15 @@ inline void HybQMC::measure_stat()
 	for(int s=0; s<N_S; s++){
 		K += S[s].k;
 	}
-	B->n_ktot[K]++;
+	B.n_ktot[K]++;
 
 	for(int s=0; s<N_S; s++){
-		B->n_k[s][S[s].k] ++;
+		B.n_k[s][S[s].k] ++;
 	}
 
-	B->ave_sign += w_sign;
-// 	if(w_sign>0)  B->ave_sign++;
-// 	else          B->ave_sign--;
+	B.ave_sign += w_sign;
+// 	if(w_sign>0)  B.ave_sign++;
+// 	else          B.ave_sign--;
 }
 
 inline void HybQMC::measure_sp()
@@ -838,16 +858,16 @@ inline void HybQMC::measure_sp()
 	// f number
 	//
 	for(int s=0; s<N_S; s++){
-// 		if(S[s].flag==0)  B->f_number_int[s] ++;
-		if(S[s].flag==0)  B->f_number_int[s] += w_sign;
+// 		if(S[s].flag==0)  B.f_number_int[s] ++;
+		if(S[s].flag==0)  B.f_number_int[s] += w_sign;
 	}
 
 	for(int s=0; s<N_S; s++){
 		// double len = tau_length(S[s]);
 		double len = S[s].length();
-		B->f_number[s] += len * (double)w_sign;
-		B->occup_tot += len * (double)w_sign;
-		B->occup_mom += len * moment_f[s] * (double)w_sign;
+		B.f_number[s] += len * (double)w_sign;
+		B.occup_tot += len * (double)w_sign;
+		B.occup_mom += len * moment_f[s] * (double)w_sign;
 	}
 
 	//
@@ -863,11 +883,11 @@ inline void HybQMC::measure_sp()
 
 				if(tau>0){
 					i_tau = (int)(tau / delta_tau);
-					B->Gf[s][i_tau] -= S[s].D.mat_M[j][i] * (double)w_sign;
+					B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * (double)w_sign;
 				}
 				else{
 					i_tau = (int)((tau + prm.beta) / delta_tau);
-					B->Gf[s][i_tau] += S[s].D.mat_M[j][i] * (double)w_sign;
+					B.Gf[s][i_tau] += S[s].D.mat_M[j][i] * (double)w_sign;
 				}
 
 // 				SP[s].n[i_tau] ++;
@@ -1024,9 +1044,9 @@ inline void HybQMC::measure_tp()
 
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
-// 			measure_tp_sub(B->chi[s1][s2], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k);
+// 			measure_tp_sub(B.chi[s1][s2], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k);
 			for(int n=0; n<=N_TP; n++){
-				B->chi[s1][s2][n] += measure_tp_sub(TP_tau[n], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k) * (double)w_sign;
+				B.chi[s1][s2][n] += measure_tp_sub(TP_tau[n], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k) * (double)w_sign;
 			}
 		}
 	}
@@ -1062,18 +1082,18 @@ void HybQMC::func_measure2()
 
 inline void HybQMC::averagebin_stat(int n_sample)
 {
-	double B_ave_sign = (double)B->ave_sign / (double)n_sample;
+	double B_ave_sign = (double)B_TOT.ave_sign / (double)n_sample;
 
 	PQ.ave_sign += B_ave_sign;
 	PQ.ave_sign_err += pow(B_ave_sign, 2);
 
 
 	unsigned long sum_n_k = 0;
-	for(int i=0; i<N_K; i++)  sum_n_k += B->n_k[0][i];
+	for(int i=0; i<N_K; i++)  sum_n_k += B_TOT.n_k[0][i];
 
 	double B_ave_ktot = 0;
 	for(int i=0; i<N_S*N_K; i++){
-		double B_n_ktot = double(B->n_ktot[i]) / double(sum_n_k);
+		double B_n_ktot = double(B_TOT.n_ktot[i]) / double(sum_n_k);
 		PQ.Z_ktot[i] += B_n_ktot;
 		PQ.Z_ktot_err[i] += pow(B_n_ktot, 2);
 
@@ -1085,7 +1105,7 @@ inline void HybQMC::averagebin_stat(int n_sample)
 	double B_ave_k[N_S] = {0};
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_K; i++){
-			double B_n_k = double(B->n_k[s][i]) / double(sum_n_k);
+			double B_n_k = double(B_TOT.n_k[s][i]) / double(sum_n_k);
 			PQ.Z_k[s][i] += B_n_k;
 			PQ.Z_k_err[s][i] += pow(B_n_k, 2);
 
@@ -1100,44 +1120,44 @@ inline void HybQMC::averagebin_sp(int n_sample)
 {
 
 	for(int s=0; s<N_S; s++){
-		B->f_number[s] /= prm.beta * (double)n_sample;
+		B_TOT.f_number[s] /= prm.beta * (double)n_sample;
 
-		SP[s].f_number += B->f_number[s];
-		SP[s].f_number_err += pow(B->f_number[s], 2);
+		SP[s].f_number += B_TOT.f_number[s];
+		SP[s].f_number_err += pow(B_TOT.f_number[s], 2);
 	}
 
 	for(int s=0; s<N_S; s++){
-		double B_f_number2 = (double)B->f_number_int[s] / (double)n_sample;
+		double B_f_number2 = (double)B_TOT.f_number_int[s] / (double)n_sample;
 
 		SP[s].f_number2 += B_f_number2;
 		SP[s].f_number2_err += pow(B_f_number2, 2);
 	}
 
-	B->occup_tot /= prm.beta * (double)n_sample;
-	B->occup_mom /= prm.beta * (double)n_sample;
-	PQ.occup_tot += B->occup_tot;
-	PQ.occup_mom += B->occup_mom;
-	PQ.occup_tot_err += pow(B->occup_tot, 2);
-	PQ.occup_mom_err += pow(B->occup_mom, 2);
+	B_TOT.occup_tot /= prm.beta * (double)n_sample;
+	B_TOT.occup_mom /= prm.beta * (double)n_sample;
+	PQ.occup_tot += B_TOT.occup_tot;
+	PQ.occup_mom += B_TOT.occup_mom;
+	PQ.occup_tot_err += pow(B_TOT.occup_tot, 2);
+	PQ.occup_mom_err += pow(B_TOT.occup_mom, 2);
 
 
 	double delta_tau = prm.beta / (double)N_TAU;
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_TAU; i++){
-			B->Gf[s][i] /= prm.beta * delta_tau * (double)n_sample;
+			B_TOT.Gf[s][i] /= prm.beta * delta_tau * (double)n_sample;
 		}
 
 		for(int i=N_TAU-1; i>0; i--){
-			B->Gf[s][i] = (B->Gf[s][i] + B->Gf[s][i-1]) * 0.5;
+			B_TOT.Gf[s][i] = (B_TOT.Gf[s][i] + B_TOT.Gf[s][i-1]) * 0.5;
 		}
 
-// 		B->Gf[s][0] = B->f_number[s] - 1.0;
-// 		B->Gf[s][N_TAU] = - B->f_number[s];
+// 		B_TOT.Gf[s][0] = B_TOT.f_number[s] - 1.0;
+// 		B_TOT.Gf[s][N_TAU] = - B_TOT.f_number[s];
 
 // 		for(int i=0; i<=N_TAU; i++){
 		for(int i=1; i<N_TAU; i++){
-			SP[s].Gf_tau[i] += B->Gf[s][i];
-			SP[s].Gf_tau_err[i] += pow(B->Gf[s][i], 2);
+			SP[s].Gf_tau[i] += B_TOT.Gf[s][i];
+			SP[s].Gf_tau_err[i] += pow(B_TOT.Gf[s][i], 2);
 		}
 	}
 
@@ -1148,17 +1168,17 @@ inline void HybQMC::averagebin_tp(int n_sample)
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
 			for(int i=0; i<=N_TP; i++){
-				B->chi[s1][s2][i] /= prm.beta * (double)n_sample;
+				B_TOT.chi[s1][s2][i] /= prm.beta * (double)n_sample;
 			}
 
-			if(s1==s2)  B->chi[s1][s1][0] = B->f_number[s1];
+			if(s1==s2)  B_TOT.chi[s1][s1][0] = B_TOT.f_number[s1];
 
-			double temp = B->f_number[s1] * B->f_number[s2];
-			for(int i=0; i<=N_TP; i++)  B->chi[s1][s2][i] -= temp;
+			double temp = B_TOT.f_number[s1] * B_TOT.f_number[s2];
+			for(int i=0; i<=N_TP; i++)  B_TOT.chi[s1][s2][i] -= temp;
 
 			for(int i=0; i<=N_TP; i++){
-				TP[s1][s2].chi_tau[i] += B->chi[s1][s2][i];
-				TP[s1][s2].chi_tau_err[i] += pow(B->chi[s1][s2][i], 2);
+				TP[s1][s2].chi_tau[i] += B_TOT.chi[s1][s2][i];
+				TP[s1][s2].chi_tau_err[i] += pow(B_TOT.chi[s1][s2][i], 2);
 			}
 		}
 	}
@@ -1173,15 +1193,15 @@ inline void HybQMC::averagebin_tp(int n_sample)
 		double B_chi_diag = 0, B_chi_offd = 0;
 		for(int s1=0; s1<N_S; s1++){
 			for(int s2=0; s2<N_S; s2++){
-				if(s1==s2)  B_chi_diag += B->chi[s1][s2][i];
-				else        B_chi_offd += B->chi[s1][s2][i];
+				if(s1==s2)  B_chi_diag += B_TOT.chi[s1][s2][i];
+				else        B_chi_offd += B_TOT.chi[s1][s2][i];
 			}
 		}
 		B_chi_ch[i] = B_chi_diag + B_chi_offd;
 
 // 		B_chi_sp[i] = B_chi_diag - B_chi_offd / (double)(N_S-1);
 		for(int s1=0; s1<N_S; s1++){
-			for(int s2=0; s2<N_S; s2++)  B_chi_sp[i] += fac[s1][s2] * B->chi[s1][s2][i];
+			for(int s2=0; s2<N_S; s2++)  B_chi_sp[i] += fac[s1][s2] * B_TOT.chi[s1][s2][i];
 		}
 
 		TP_sp.chi_tau[i] += B_chi_sp[i];
@@ -1227,19 +1247,19 @@ inline void HybQMC::averagebin_tp(int n_sample)
 	// double delta_tau_TP2 = prm.beta / (N_TP2*2);
 
 	// for(int i=0; i<2*N_TP2; i++){
-	// 	B->chi_tr1[i] /= prm.beta * pow(delta_tau_TP2,3) * (double)n_sample;
-	// 	B->chi_tr2[i] /= prm.beta * pow(delta_tau_TP2,3) * (double)n_sample;
+	// 	B_TOT.chi_tr1[i] /= prm.beta * pow(delta_tau_TP2,3) * (double)n_sample;
+	// 	B_TOT.chi_tr2[i] /= prm.beta * pow(delta_tau_TP2,3) * (double)n_sample;
 	// }
 	// for(int i=2*N_TP2-1; i>0; i--){
-	// 	B->chi_tr1[i] = (B->chi_tr1[i] + B->chi_tr1[i-1]) * 0.5;
-	// 	B->chi_tr2[i] = (B->chi_tr2[i] + B->chi_tr2[i-1]) * 0.5;
+	// 	B_TOT.chi_tr1[i] = (B_TOT.chi_tr1[i] + B_TOT.chi_tr1[i-1]) * 0.5;
+	// 	B_TOT.chi_tr2[i] = (B_TOT.chi_tr2[i] + B_TOT.chi_tr2[i-1]) * 0.5;
 	// }
 	// for(int i=0; i<=2*N_TP2; i++){
-	// 	TP_tr.chi_tau1[i] += B->chi_tr1[i];
-	// 	TP_tr.chi_tau2[i] += B->chi_tr2[i];
+	// 	TP_tr.chi_tau1[i] += B_TOT.chi_tr1[i];
+	// 	TP_tr.chi_tau2[i] += B_TOT.chi_tr2[i];
 
-	// 	TP_tr.chi_tau1_err[i] += pow(B->chi_tr1[i], 2);
-	// 	TP_tr.chi_tau2_err[i] += pow(B->chi_tr2[i], 2);
+	// 	TP_tr.chi_tau1_err[i] += pow(B_TOT.chi_tr1[i], 2);
+	// 	TP_tr.chi_tau2_err[i] += pow(B_TOT.chi_tr2[i], 2);
 	// }
 
 	// TP_tr.chi_tau1[0] = 0;
@@ -1253,10 +1273,10 @@ inline void HybQMC::averagebin_tp(int n_sample)
 	// TP_tr.chi_tau2_err[2*N_TP2] = 0;
 
 	// for(int i=0; i<N_TP_W; i++){
-	// 	B->chi_omega[i] /= prm.beta * pow(delta_tau_TP2,2) * (double)n_sample;
+	// 	B_TOT.chi_omega[i] /= prm.beta * pow(delta_tau_TP2,2) * (double)n_sample;
 
-	// 	TP_tr.chi_omega[i] += B->chi_omega[i];
-	// 	TP_tr.chi_omega_err[i] += pow(real(B->chi_omega[i]), 2) + IMAG * pow(imag(B->chi_omega[i]), 2);
+	// 	TP_tr.chi_omega[i] += B_TOT.chi_omega[i];
+	// 	TP_tr.chi_omega_err[i] += pow(real(B_TOT.chi_omega[i]), 2) + IMAG * pow(imag(B_TOT.chi_omega[i]), 2);
 	// }
 }
 
@@ -1382,7 +1402,7 @@ inline void HybQMC::average_stat(int n_bin)
 
 	int max_tot_nk;
 	for(int i=1; i<N_S*N_K; i++){
-		if( B->n_ktot[i] != 0 )  max_tot_nk = i;
+		if( B_TOT.n_ktot[i] != 0 )  max_tot_nk = i;
 	}
 	int max_nk[N_S];
 	for(int s=0; s<N_S; s++){
@@ -1431,13 +1451,16 @@ inline void HybQMC::average_sp(int n_bin)
 			average_sub(SP[s].Gf_tau[i], SP[s].Gf_tau_err[i], n_bin, PQ.ave_sign);
 		}
 
-		SP[s].Gf_tau[N_TAU] = -SP[s].f_number;
-		SP[s].Gf_tau_err[N_TAU] = SP[s].f_number_err;
+		// SP[s].Gf_tau[N_TAU] = -SP[s].f_number;
+		// SP[s].Gf_tau_err[N_TAU] = SP[s].f_number_err;
+		SP[s].Gf_tau.back() = -SP[s].f_number;  // [N_TAU]
+		SP[s].Gf_tau_err.back() = SP[s].f_number_err;
 
 		if( prm.UINF ){
 			SP[s].Gf_tau[0] = PQ.occup_tot - 1.0;
 			SP[s].Gf_tau_err[0] = PQ.occup_tot_err;
-			SP[s].jump = - SP[s].Gf_tau[N_TAU] - SP[s].Gf_tau[0];
+			// SP[s].jump = - SP[s].Gf_tau[N_TAU] - SP[s].Gf_tau[0];
+			SP[s].jump = - SP[s].Gf_tau.back() - SP[s].Gf_tau[0];
 		}
 		else{
 			SP[s].Gf_tau[0] = SP[s].f_number - 1.0;
@@ -1588,7 +1611,7 @@ void HybQMC::func_average2(int n_bin)
 //
 
 // return time
-static double mpi_reduce_bin(int i_measure)
+double HybQMC::mpi_reduce_bin(int i_measure)
 {
 	double start=0, end=0;  // measure time
 
@@ -1610,23 +1633,30 @@ static double mpi_reduce_bin(int i_measure)
 	MPI_Barrier(MPI_COMM_WORLD);
 	start = MPI_Wtime();
 
-	MPI_Reduce(&B->ave_sign, &B_TOT->ave_sign, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&B->n_k[0][0], &B_TOT->n_k[0][0], N_S*N_K, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&B->n_ktot[0], &B_TOT->n_ktot[0], N_S*N_K, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	// MPI_Reduce(&B->ave_sign, &B_TOT->ave_sign, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	// MPI_Reduce(&B->n_k[0][0], &B_TOT->n_k[0][0], N_S*N_K, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	// MPI_Reduce(&B->n_ktot[0], &B_TOT->n_ktot[0], N_S*N_K, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&B.ave_sign, &B_TOT.ave_sign, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(B.n_k.data(), B_TOT.n_k.data(), B.n_k.size(), MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(B.n_ktot.data(), B_TOT.n_ktot.data(), B.n_ktot.size(), MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	if(i_measure>0){
-
-		MPI_Reduce(&B->Gf[0][0], &B_TOT->Gf[0][0], N_S*(N_TAU+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->f_number[0], &B_TOT->f_number[0], N_S, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->f_number_int[0], &B_TOT->f_number_int[0], N_S, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->occup_tot, &B_TOT->occup_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->occup_mom, &B_TOT->occup_mom, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// MPI_Reduce(&B->Gf[0][0], &B_TOT->Gf[0][0], N_S*(N_TAU+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// MPI_Reduce(&B->f_number[0], &B_TOT->f_number[0], N_S, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// MPI_Reduce(&B->f_number_int[0], &B_TOT->f_number_int[0], N_S, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		// MPI_Reduce(&B->occup_tot, &B_TOT->occup_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// MPI_Reduce(&B->occup_mom, &B_TOT->occup_mom, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.Gf.data(), B_TOT.Gf.data(), B.Gf.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.f_number.data(), B_TOT.f_number.data(), B.f_number.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.f_number_int.data(), B_TOT.f_number_int.data(), B.f_number_int.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&B.occup_tot, &B_TOT.occup_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&B.occup_mom, &B_TOT.occup_mom, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
 
 	if( i_measure>1 ){
 // 		MPI_Reduce(&B->chi_sp[0], &B_TOT->chi_sp[0], N_TP+1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 // 		MPI_Reduce(&B->chi_ch[0], &B_TOT->chi_ch[0], N_TP+1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->chi[0][0][0], &B_TOT->chi[0][0][0], N_S*N_S*(N_TP+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.chi.data(), B_TOT.chi.data(), B.chi.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 		#if CHI_TR
 		MPI_Reduce(&B->chi_tr1[0], &B_TOT->chi_tr1[0], (2*N_TP2+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1636,7 +1666,7 @@ static double mpi_reduce_bin(int i_measure)
 		#endif // CHI_TR
 	}
 
-	if(my_rank==0)  *B = *B_TOT;
+	// if(my_rank==0)  *B = *B_TOT;
 
 	end = MPI_Wtime();
 
@@ -1648,7 +1678,7 @@ static double mpi_reduce_bin(int i_measure)
 
 }
 
-static double mpi_reduce_accept()
+double HybQMC::mpi_reduce_accept()
 {
 	double start=0, end=0;  // measure time
 

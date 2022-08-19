@@ -15,6 +15,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #include "operators.h"
 #include <vector>
 #include "vector_type.hpp"
+#include "array.hpp"
 
 //
 // N_TAU
@@ -293,6 +294,22 @@ private:
 	// 	shift_tau1, shift_tau2
 	// };
 
+	struct phys_quant_bin{
+		long int ave_sign;
+		Array2D<unsigned long> n_k;  // [N_S][N_K]
+		std::vector<unsigned long> n_ktot;  // [N_S*N_K]
+		Array2D<double> Gf;  // [N_S][N_TAU+1]
+		std::vector<double> f_number;  // [N_S]
+		std::vector<int> f_number_int;  // [N_S]
+		double occup_tot, occup_mom;
+		Array3D<double> chi; // [N_S][N_S][N_TP+1]
+
+		phys_quant_bin() {};
+		phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp) : n_k(n_s, n_k), n_ktot(n_s*n_k), Gf(n_s, n_tau+1), f_number(n_s), f_number_int(n_s), chi(n_s, n_s, n_tp+1) {};
+
+		void allzeros();
+	};
+	phys_quant_bin B, B_TOT;
 };
 
 //============================================================================
