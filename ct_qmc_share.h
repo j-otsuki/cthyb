@@ -16,42 +16,10 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #include <ctime>
 #include <string.h>
 #include <vector>
-// #include <gsl/gsl_integration.h>
-// #include <gsl/gsl_spline.h>
-// #include <gsl/gsl_sf_erf.h>
-// #include "green_func_0.h"
+
 #include "mt.h"
 #include "fft.h"
-// #include "erfc.h"
-// #include "pade.h"
 #include "gtau.h"
-
-// using namespace std;
-
-// #define N_K 1024  // maximum number of k
-// #define N_TAU 1024  // discretization of beta
-#define DATA_DIR "./"
-
-// #define DOS 0
-// 0: constant
-// 1: semicircle (Bethe lattice)
-// 2: Gaussian (hyper-cubic lattice)
-// 3: d=2 tight-binding band (N_L=256, 512)
-// 4: d=3 tight-binding band (N_L=32, 64)
-// 5: d=4 tight-binding band (N_L=16, 32)
-// 6: d=5 tight-binding band (N_L=8, 16)
-// -1: single bath
-
-// #define N_L 32  // # of k-points between k=0 and PI
-
-const double ACCURACY_FILLING = 1e-8;
-const int FILLING_ITER_MAX = 100;
-
-// #define EQUAL_TIME_G 0
-// 0 for antiferro-exchange
-// 1 for ferro-exchange interaction (only for N_F=1 and 2)
-// 1 for U-expansion
-
 
 
 #ifndef _IMAG
@@ -59,29 +27,6 @@ const int FILLING_ITER_MAX = 100;
 const std::complex<double> IMAG(0, 1.0);
 #endif // _IMAG
 
-// #define MAX(a,b)  ((a) > (b) ? (a) : (b))
-// #define MIN(a,b)  ((a) > (b) ? (b) : (a))
-
-
-#define _LAPACK
-#ifdef _LAPACK
-extern "C"{
-	void dgetrf_(long*, long*, double*, long*, long*, long*);
-	void dgetri_(long*, double*, long*, long*, double*, long*, long*);
-	void zgetrf_(long*, long*, std::complex<double>*, long*, long*, long*);
-	void zgetri_(long*, std::complex<double>*, long*, long*, std::complex<double>*, long*, long*);
-}
-#endif // _LAPACK
-
-
-
-// // int [0:n)
-// inline int rand_int(int n);
-// // [0:beta)
-// inline double rand_tau_beta(double beta);
-// // (0:l_max)
-// inline double rand_tau_l(double l_max);
-// // int [0:n)
 
 // int [0:n)
 inline int rand_int(int n)
@@ -157,29 +102,6 @@ void tau_mesh_nonlinear_boson(double *tau, int n_tau1, int n_tau2, double beta);
 // shortest interval: beta/n_tau2
 void tau_mesh_nonlinear_fermion(double *tau, int n_tau1, int n_tau2, double beta);
 
-
-// struct cond_op{
-// 	int k;  // number of segments
-// 	double tau1[N_K];  // for f-annihilation (c-creation) operator
-// 	double tau2[N_K];  // for f-creation (c-annihilation) operator
-// 	double mat_M[N_K][N_K];  // [tau1][tau2]
-// 	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
-// };
-
-
-void phase_init(struct phase &PHASE);
-std::complex<double> phase_interp(struct phase &PHASE, double x);
-void phase_free(struct phase &PHASE);
-
-
-//
-// for test
-//
-void print_mat_M(struct cond_op &F);
-
-void test_calc_mat_Delta(struct cond_op &F, struct green_func_0 &G0);
-void test_calc_mat_M(struct cond_op &F, struct green_func_0 &G0);
-void test_product_Delta_M(struct cond_op &F, struct green_func_0 &G0);
 
 
 #endif // _CT_QMC_SHARE_H

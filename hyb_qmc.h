@@ -29,7 +29,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #define TEST_MODE 0
 #define DISPLAY 1
 
-#define LOG_FILE DATA_DIR "hyb_qmc.log"
+#define LOG_FILE "hyb_qmc.log"
 
 const int N_WARMUP = 1000000;
 
