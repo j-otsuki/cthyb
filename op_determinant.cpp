@@ -76,6 +76,8 @@ void OpDet::add_mat_M(int i_tau1, int i_tau2, double *G0_tau1, double *G0_tau2, 
 		else  mat_M[i_tau1][j+1] = -R[j] * lambda_inv;
 	}
 	mat_M[i_tau1][i_tau2] = lambda_inv;
+
+	++_n_k;
 }
 
 
@@ -110,6 +112,8 @@ void OpDet::remove_mat_M(int i_tau1, int i_tau2, double lambda)
 			mat_M[i][j] -= temp_M_i[i] * temp_M_j[j] * lambda_inv;
 		}
 	}
+
+	--_n_k;
 }
 
 
