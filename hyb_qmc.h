@@ -17,41 +17,14 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 #include "vector_type.hpp"
 #include "array.hpp"
 
-//
-// N_TAU
-// N_K
-// struct cond_op
-//
 
 #define HYB_QMC_MPI 1
 #define PHONON 0  // Holstein model
-
 #define TEST_MODE 0
-#define DISPLAY 1
-
-#define LOG_FILE "hyb_qmc.log"
-
-const int N_WARMUP = 1000000;
 
 #if HYB_QMC_MPI
 #include <mpi.h>
 #endif // HYB_QMC_MPI
-
-
-/* INPUT
-struct hyb_qmc_params prm;
-struct num_mc n_mc;
-complex<double> G0_omega[N_TAU/2];
-*/
-
-/* OUTPUT
-struct phys_quant *PQ;
-struct single_particle *SP;  // [N_S]
-struct two_particle **TP;  // [N_S][N_S]
-struct two_particle *TP_sp, *TP_ch;
-struct two_particle_tr *TP_tr;
-double *TP_tau;  // [N_TP+1]
-*/
 
 
 //============================================================================
@@ -65,19 +38,19 @@ struct hyb_qmc_params{
 	double beta;
 	int UINF;
 
-	hyb_qmc_params(){
-		UINF = 0;
-	}
+	hyb_qmc_params() : UINF(0) {};
 };
 
 struct num_mc{
-// 	int N_WARMUP;
+	int N_WARMUP;
 	int N_MSR;
 	int N_BIN;
-	int N_ADD;  // to be optimized if N_ADD<0.  R_ADD = -N_ADD / 10.
-	int N_SHIFT;  // to be optimized if N_SHIFT<0.  R_SHIFT = -N_SHIFT / 10.
-// The most part of the configuration is expected to be updated,
-// when R_ADD=1 (N_ADD=-10) or R_SHIFT=1 (N_SHIFT=-10).
+	int N_ADD;  // optimized if R_ADD is given.
+	int N_SHIFT;  // optimized if R_SHIFT is given.
+	double R_ADD;
+	double R_SHIFT;
+	// The most part of the configuration is expected to be updated,
+	// when R_ADD=1 or R_SHIFT=1.
 };
 
 //============================================================================
@@ -187,18 +160,13 @@ private:
 
 	int w_sign;
 
-	// If N_ADD<0 and/or N_SHIFT<0,
-	// N_ADD and/or N_SHIFT is optimized according to
-	//   N_ADD = (ave_tot_k / acceptance) * R_ADD * corr_fac
-	//   N_SHIFT = (2 * ave_tot_k / acceptance) * R_SHIFT * corr_fac
-	// The most part of the configuration is expected to be updated, when R_ADD=1 or R_SHIFT=1.
-	double R_ADD;  // set by R_ADD = -N_ADD / 10
-	double R_SHIFT;  // set by R_SHIFT = -N_SHIFT / 10
-	int N_ADD_MIN, N_SHIFT_MIN;  // N_S, 1
-	// correction factor: [1:MAX_R_CORR]  determined by P(k)
+	const int N_ADD_MIN, N_SHIFT_MIN;  // N_S, 1
 
-	int MAX_R_CORR;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
-	int K_TOT_MIN;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
+	// correction factor: [1:MAX_R_CORR]  determined by P(k)
+	const int MAX_R_CORR;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
+	const int K_TOT_MIN;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
+
+	const char LOG_FILE[64] = "hyb_qmc.log";
 
 	void eval_acceptance(double n_sample, int n_add, int n_shift);
 	void sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_shift);

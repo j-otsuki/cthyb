@@ -44,7 +44,8 @@ public:
 	bool flag_tp;
 
 	// [MC]
-	int n_bin, n_msr, n_add, n_shift;
+	int n_bin, n_msr, n_add, n_shift, n_warmup;
+	double r_add, r_shift;
 
 	// methods
 	void read_params(string& file_ini);
@@ -77,10 +78,13 @@ void InputParams::read_params(string& file_ini)
 		flag_tp = pt.get<bool>("control.flag_tp", false);
 
 		// [MC]
+		n_warmup = pt.get<int>("MC.n_warmup", 1000000);
 		n_bin = pt.get<int>("MC.n_bin", 10);
 		n_msr = pt.get<int>("MC.n_msr");
-		n_add = pt.get<int>("MC.n_add", -4);
-		n_shift = pt.get<int>("MC.n_shift", -4);
+		n_add = pt.get<int>("MC.n_add", 0);
+		r_add = pt.get<double>("MC.r_add", 0.4);
+		n_shift = pt.get<int>("MC.n_shift", 0);
+		r_shift = pt.get<double>("MC.r_shift", 0.4);
 	}
 	catch(boost::property_tree::ptree_error& e){
 		cerr << "ERROR: " << e.what() << endl;
@@ -109,10 +113,13 @@ void InputParams::summary()
 	cout << "flag_tp = " << flag_tp << endl;
 
 	cout << "\n[MC]" << endl;
+	cout << "n_warmup = " << n_warmup << endl;
 	cout << "n_bin = " << n_bin << endl;
 	cout << "n_msr = " << n_msr << endl;
 	cout << "n_add = " << n_add << endl;
+	cout << "r_add = " << r_add << endl;
 	cout << "n_shift = " << n_shift << endl;
+	cout << "r_shift = " << r_shift << endl;
 	cout << "=====================================" << endl;
 }
 
@@ -527,6 +534,9 @@ int main(int argc, char* argv[])
 	n_mc.N_BIN = in.n_bin;
 	n_mc.N_ADD = in.n_add;
 	n_mc.N_SHIFT = in.n_shift;
+	n_mc.N_WARMUP = in.n_warmup;
+	n_mc.R_ADD = in.r_add;
+	n_mc.R_SHIFT = in.r_shift;
 	Q.set_nmc(n_mc);
 
 	// Set parameters

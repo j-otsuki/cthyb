@@ -145,15 +145,13 @@ void HybQMC::phys_quant_bin::allzeros()
 //
 
 HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed)
+	: N_ADD_MIN(n_s), N_SHIFT_MIN(1), MAX_R_CORR(0), K_TOT_MIN(20 * n_s)
 {
 	N_TAU = n_tau;
 	N_K = max_order;
 	N_S = n_s;
 	N_TP = n_tp;
 	N_TP2 = n_tp2;
-
-	MAX_R_CORR = 0;
-	K_TOT_MIN = 20 * N_S;
 
 	// A seed of random number (determined from time if seed=0)
 	unsigned long seed = rand_seed;
@@ -172,7 +170,7 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 		printf("\nHYBQMC_INIT  %s\n", tag);
 		printf(" N_S = %d\n", N_S);
 		printf(" (N_TAU, N_TP, N_TP2) = (%d, %d, %d)\n", N_TAU, N_TP, N_TP2);
-		printf(" N_WARMUP = %d\n", N_WARMUP);
+		// printf(" N_WARMUP = %d\n", N_WARMUP);
 		// printf(" PHONON = %d\n", PHONON);
 		// printf(" CHI_TR = %d\n", CHI_TR);
 		printf(" seed = %ld\n", seed);
@@ -261,7 +259,7 @@ HybQMC::~HybQMC()
 		fprintf(fp_log, "\nFINAL\n");
 		fclose(fp_log);
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_FINAL\n");
 	}
 
@@ -279,20 +277,11 @@ void HybQMC::set_nmc(const num_mc& n_mc_in)
 		fprintf(fp_log, "\nSET_NUM_MC\n");
 		fclose(fp_log);
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_SET_NUM_MC\n");
 	}
 
 	n_mc = n_mc_in;
-
-	if(n_mc.N_ADD<0)  R_ADD = -(double)n_mc.N_ADD / 10.;
-	else  R_ADD = 0;
-
-	if(n_mc.N_SHIFT<0)  R_SHIFT = -(double)n_mc.N_SHIFT / 10.;
-	else  R_SHIFT = 0;
-
-	N_ADD_MIN = N_S;
-	N_SHIFT_MIN = 1;
 }
 
 void HybQMC::set_params(const hyb_qmc_params& prm_in)
@@ -302,13 +291,13 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 		fprintf(fp_log, "\nSET_PARAMS\n");
 		fclose(fp_log);
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_SET_PARAMS\n");
 	}
 
 	prm = prm_in;
 
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("  beta = %.3lf\n", prm.beta);
 		printf("  ef =\n    ");
 		for(int i=0; i<prm.ef.size(); i++){
@@ -343,7 +332,7 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
 		fprintf(fp_log, "\nSET_DELTA\n");
 		fclose(fp_log);
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_SET_DELTA\n");
 	}
 
@@ -379,7 +368,7 @@ void HybQMC::set_moment(const vec_d& moment_f_in)
 	}
 	ave /= double(N_S);
 	curie /= double(N_S);
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_SET_MOMENT\n");
 		printf(" ave = %.5lf\n", ave);
 		printf(" Curie const = %.5lf\n", curie);
@@ -393,7 +382,7 @@ void HybQMC::eval(bool flag_tp)
 		fprintf(fp_log, "\nEVAL_MC\n");
 		fclose(fp_log);
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\nHYBQMC_EVAL\n");
 	}
 	time_t time_start = clock();
@@ -402,10 +391,10 @@ void HybQMC::eval(bool flag_tp)
 	init_measure();
 
 	// warming up
-	if(R_SHIFT)  sampling(0, 1, N_WARMUP * process_num, 1, 1);
-	else         sampling(0, 1, N_WARMUP * process_num, 1, 0);
+	if(n_mc.R_SHIFT)  sampling(0, 1, n_mc.N_WARMUP * process_num, 1, 1);
+	else              sampling(0, 1, n_mc.N_WARMUP * process_num, 1, 0);
 
-	if( R_ADD || R_SHIFT ){
+	if( n_mc.R_ADD || n_mc.R_SHIFT ){
 		if(my_rank==0){
 			opt_n_mc(ACCPT.d_accept_seg, ACCPT.d_accept_shift);
 		}
@@ -422,7 +411,7 @@ void HybQMC::eval(bool flag_tp)
 	// measuring physical quantities
 	sampling(i_measure, n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
 
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		time_t time_end = clock();
 		char str[100];
 		sprint_time(str, time_end - time_start);
@@ -453,10 +442,8 @@ void HybQMC::eval_acceptance(double n_sample, int n_add, int n_shift)
 	fprintf(fp_log, "\n segment add/rem :");
 	fprintf(fp_log, " accept %.6lf, reject %.6lf\n", ACCPT.d_accept_seg, ACCPT.d_reject_seg);
 
-	if(DISPLAY){
-		printf("\n segment add/rem :");
-		printf(" accept %.6lf, reject %.6lf\n", ACCPT.d_accept_seg, ACCPT.d_reject_seg);
-	}
+	printf("\n segment add/rem :");
+	printf(" accept %.6lf, reject %.6lf\n", ACCPT.d_accept_seg, ACCPT.d_reject_seg);
 
 	if(n_shift){
 		double tot_shift = n_sample * (double)n_shift;
@@ -466,10 +453,8 @@ void HybQMC::eval_acceptance(double n_sample, int n_add, int n_shift)
 		fprintf(fp_log, " segment shift   :");
 		fprintf(fp_log, " accept %.6lf, reject %.6lf\n", ACCPT.d_accept_shift, ACCPT.d_reject_shift);
 
-		if(DISPLAY){
-			printf(" segment shift   :");
-			printf(" accept %.6lf, reject %.6lf\n", ACCPT.d_accept_shift, ACCPT.d_reject_shift);
-		}
+		printf(" segment shift   :");
+		printf(" accept %.6lf, reject %.6lf\n", ACCPT.d_accept_shift, ACCPT.d_reject_shift);
 	}
 	else{
 		ACCPT.d_accept_shift = 0;
@@ -515,7 +500,7 @@ void HybQMC::sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_s
 	//
 	// sampling
 	//
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\n|---------|---------|---------|---------|---------|\n|");
 	}
 	int n_meter = (int)(n_bin * local_n_sample / 50);
@@ -546,7 +531,7 @@ void HybQMC::sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_s
 			(this->*func_measure[i_measure])();
 
 			if( ++i_meter % n_meter == 0 ){
-				if(my_rank==0 && DISPLAY){
+				if(my_rank==0){
 					printf("*");  fflush(stdout);
 				}
 			}
@@ -569,7 +554,7 @@ void HybQMC::sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_s
 			fprint_log(str);
 		}
 	}
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\n");
 		fflush(stdout);
 	}
@@ -632,7 +617,7 @@ void HybQMC::opt_n_mc(double accept_seg, double accept_shift)
 		double corr2 = std::max(1.+ kurt, 1.);  // corr2 > 1
 
 		corr_fac = std::min(corr1 * corr2, (double)MAX_R_CORR);  // 1 <= corr_fac <= MAX_R_CORR
-		if(my_rank==0 && DISPLAY){
+		if(my_rank==0){
 			printf("\n correction factor\n");
 			printf("  %.2lf * %.2lf --> %.2lf", corr1, corr2, corr_fac);
 			printf("  (p0 = %.2lf, kurt = %.2lf)\n", p0, kurt);
@@ -642,16 +627,16 @@ void HybQMC::opt_n_mc(double accept_seg, double accept_shift)
 	//
 	// determine N_ADD if(R_ADD>0)
 	//
-	if( R_ADD ){
-		n_mc.N_ADD = (int)(R_ADD * ave_tot_k / accept_seg * corr_fac);
+	if( n_mc.R_ADD ){
+		n_mc.N_ADD = (int)(n_mc.R_ADD * ave_tot_k / accept_seg * corr_fac);
 		if(n_mc.N_ADD < N_ADD_MIN)  n_mc.N_ADD = N_ADD_MIN;
 	}
 
 	//
 	// determine N_SHIFT if(R_SHIFT>0)
 	//
-	if( R_SHIFT ){
-		n_mc.N_SHIFT = (int)(2.* R_SHIFT * ave_tot_k / accept_shift * corr_fac);
+	if( n_mc.R_SHIFT ){
+		n_mc.N_SHIFT = (int)(2.* n_mc.R_SHIFT * ave_tot_k / accept_shift * corr_fac);
 		if(n_mc.N_SHIFT < N_SHIFT_MIN)  n_mc.N_SHIFT = N_SHIFT_MIN;
 	}
 
@@ -659,9 +644,8 @@ void HybQMC::opt_n_mc(double accept_seg, double accept_shift)
 		fp_log=fopen(LOG_FILE, "a");
 		fprintf(fp_log, "\n <k>_corr = %.2lf  N_ADD = %d  N_SHIFT = %d\n", ave_tot_k, n_mc.N_ADD, n_mc.N_SHIFT);
 		fclose(fp_log);
-		if(DISPLAY){
-			printf("\n <k>_corr = %.2lf  N_ADD = %d  N_SHIFT = %d\n", ave_tot_k, n_mc.N_ADD, n_mc.N_SHIFT);
-		}
+
+		printf("\n <k>_corr = %.2lf  N_ADD = %d  N_SHIFT = %d\n", ave_tot_k, n_mc.N_ADD, n_mc.N_SHIFT);
 	}
 }
 
@@ -1151,7 +1135,7 @@ inline void HybQMC::average_stat(int n_bin)
 // 	average_sub(PQ.ave_sign, PQ.ave_sign_err, n_bin);
 	average_sub(PQ.ave_sign, PQ.ave_sign_err, n_bin, 1.0);
 
-	if(my_rank==0 && DISPLAY){
+	if(my_rank==0){
 		printf("\n average sign\n");
 		printf("   %.6lf +- %.6lf", PQ.ave_sign, PQ.ave_sign_err);
 		printf("  (deviation from 1:");
@@ -1187,23 +1171,17 @@ inline void HybQMC::average_stat(int n_bin)
 		fprintf(fp_log, "\n distribution of k");
 		fprintf(fp_log, "\n  ave. :  %5.1lf :", PQ.ave_ktot);
 		for(int s=0; s<N_S; s++)  fprintf(fp_log, " %5.1lf", PQ.ave_k[s]);
-// 		fprintf(fp_log, "\n  peak : %3d   :", peak_tot_nk);
-// 		for(int s=0; s<N_S; s++)  fprintf(fp_log, " %3d  ", peak_nk[s]);
 		fprintf(fp_log, "\n  max  : %4d   :", max_tot_nk);
 		for(int s=0; s<N_S; s++)  fprintf(fp_log, " %3d  ", max_nk[s]);
 		fprintf(fp_log, "\n");
 		fclose(fp_log);
 
-		if(DISPLAY){
-			printf("\n distribution of k");
-			printf("\n  ave. :  %5.1lf :", PQ.ave_ktot);
-			for(int s=0; s<N_S; s++)  printf(" %5.1lf", PQ.ave_k[s]);
-// 			printf("\n  peak : %3d   :", peak_tot_nk);
-// 			for(int s=0; s<N_S; s++)  printf(" %3d  ", peak_nk[s]);
-			printf("\n  max  : %4d   :", max_tot_nk);
-			for(int s=0; s<N_S; s++)  printf(" %3d  ", max_nk[s]);
-			printf("\n");
-		}
+		printf("\n distribution of k");
+		printf("\n  ave. :  %5.1lf :", PQ.ave_ktot);
+		for(int s=0; s<N_S; s++)  printf(" %5.1lf", PQ.ave_k[s]);
+		printf("\n  max  : %4d   :", max_tot_nk);
+		for(int s=0; s<N_S; s++)  printf(" %3d  ", max_nk[s]);
+		printf("\n");
 	}
 }
 
