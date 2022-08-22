@@ -20,7 +20,7 @@ Operators::Operators(int max_k) : max_k(max_k), k(0), D(max_k), flag(1)
 }
 
 
-static void rotate_upward(std::vector<double> tau, int k)
+static void rotate_upward(std::vector<double>& tau, int k)
 {
 	double temp = tau[k-1];
 
@@ -29,7 +29,7 @@ static void rotate_upward(std::vector<double> tau, int k)
 	tau[0] = temp;
 }
 
-static void rotate_downward(std::vector<double> tau, int k)
+static void rotate_downward(std::vector<double>& tau, int k)
 {
 	double temp = tau[0];
 
