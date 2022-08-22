@@ -418,8 +418,11 @@ void HybQMC::eval(int flag_tp)
 
 	init_measure();
 
+	int i_measure = 1;
+	if (flag_tp)  i_measure = 2;
+
 	// measuring physical quantities
-	sampling(flag_tp+1, n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
+	sampling(i_measure, n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
 
 	if(my_rank==0 && DISPLAY){
 		time_t time_end = clock();
@@ -1236,7 +1239,8 @@ inline void HybQMC::averagebin_tp(int n_sample)
 		for(int s2=0; s2<N_S; s2++)  fac[s1][s2] = moment_f[s1] * moment_f[s2];
 	}
 
-	double B_chi_sp[N_TP+1] = {0}, B_chi_ch[N_TP+1];
+	// double B_chi_sp[N_TP+1] = {0}, B_chi_ch[N_TP+1];
+	std::vector<double> B_chi_sp(N_TP+1), B_chi_ch(N_TP+1);  // initialized by 0
 	for(int i=0; i<=N_TP; i++){
 		double B_chi_diag = 0, B_chi_offd = 0;
 		for(int s1=0; s1<N_S; s1++){
