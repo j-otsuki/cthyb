@@ -93,6 +93,9 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	N_TP = n_tp;
 	N_TP2 = n_tp2;
 
+	MAX_R_CORR = 0;
+	K_TOT_MIN = 20 * N_S;
+
 	// A seed of random number (determined from time if seed=0)
 	unsigned long seed = rand_seed;
 

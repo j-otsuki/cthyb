@@ -39,9 +39,9 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 // const unsigned long RAND_SEED = 0;  // 0: random (time),  >0: fixed number
 const int N_WARMUP = 1000000;
-const int MAX_R_CORR = 0;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
+// const int MAX_R_CORR = 0;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
 // const int K_TOT_MIN = 20 * N_S;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
-const int K_TOT_MIN = 0;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
+// const int K_TOT_MIN = 0;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
 
 #if HYB_QMC_MPI
 #include <mpi.h>
@@ -272,6 +272,9 @@ private:
 	double R_SHIFT;  // set by R_SHIFT = -N_SHIFT / 10
 	int N_ADD_MIN, N_SHIFT_MIN;  // N_S, 1
 	// correction factor: [1:MAX_R_CORR]  determined by P(k)
+
+	int MAX_R_CORR;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
+	int K_TOT_MIN;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction
 
 	void eval_acceptance(double n_sample, int n_add, int n_shift);
 	void sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_shift);
