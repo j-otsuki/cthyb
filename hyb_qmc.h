@@ -37,7 +37,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 #define LOG_FILE DATA_DIR "hyb_qmc.log"
 
-const unsigned long RAND_SEED = 0;  // 0: random (time),  >0: fixed number
+// const unsigned long RAND_SEED = 0;  // 0: random (time),  >0: fixed number
 const int N_WARMUP = 1000000;
 const int MAX_R_CORR = 0;  // >1: maximum of corr_fac for opt_n_mc,  0: no correction
 // const int K_TOT_MIN = 20 * N_S;  // >1: minimum of k_tot used in opt_n_mc,  0: no correction

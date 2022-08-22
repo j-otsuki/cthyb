@@ -94,7 +94,7 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	N_TP2 = n_tp2;
 
 	// A seed of random number (determined from time if seed=0)
-	unsigned long seed = RAND_SEED;
+	unsigned long seed = rand_seed;
 
 	#if HYB_QMC_MPI
 	// 	MPI_Init(&argc_in, &argv_in);
@@ -1854,7 +1854,7 @@ void HybQMC::add_seg(int sigma, int anti)
 		int i_tau_l, i_tau_r;
 
 		// double *F_tau_l = F->tau1, *F_tau_r = F->tau2;
-		std::vector<double> &F_tau_l = F->tau1, &F_tau_r = F->tau2;
+		std::vector<double> *F_tau_l = &(F->tau1), *F_tau_r = &(F->tau2);
 
 		int wind = F->flag==1 ? 0 : 1;
 		if( anti ){
@@ -1876,7 +1876,7 @@ void HybQMC::add_seg(int sigma, int anti)
 
 // 		if( reject_create_seg(F, tau2, i_tau2, l_max) )  return;
 // 		if( reject_create_seg(F->tau1, F->tau2, F->k, wind, tau2, i_tau2, l_max) )  return;
-		if( reject_create_seg(F_tau_l, F_tau_r, F->k, wind, tau_r, i_tau_r, l_max, prm.beta) )  return;
+		if( reject_create_seg(*F_tau_l, *F_tau_r, F->k, wind, tau_r, i_tau_r, l_max, prm.beta) )  return;
 		if( prm.UINF && anti==0 ){
 			for(int r=0; r<N_S-1; r++){
 				int i_tau_rtemp;
