@@ -465,7 +465,7 @@ void print_statistics(int num, phys_quant& PQ)
 	fp=fopen(filename, "w");
 	for(int i=0; i<PQ.Z_k[0].size(); i++){
 		fprintf(fp, "%d", i);
-		for(int s=0; s<PQ.Z_k[0].size(); s++){
+		for(int s=0; s<PQ.Z_k.size(); s++){
 			if( PQ.Z_k[s][i] != 0. )  fprintf(fp, " %.5e", PQ.Z_k[s][i]);
 			else  fprintf(fp, " ?");
 		}
@@ -687,72 +687,50 @@ void print_two_particle(int num, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_pa
 }
 
 
-void print_Delta(int num)
+void print_Delta(int num, vec_vec_c& delta_omega)
 {
-/*
+	int N_S = delta_omega.size();
+	int N_TAU = delta_omega[0].size() * 2;
+
 	FILE *fp;
 	char filename[40];
 
-	double tau[N_TAU+1];
-	for(int i=0; i<=N_TAU; i++){
-		tau[i] = (double)i * prm.beta / (double)N_TAU;
-	}
+	// double tau[N_TAU+1];
+	// for(int i=0; i<=N_TAU; i++){
+	// 	tau[i] = (double)i * prm.beta / (double)N_TAU;
+	// }
+
+	// double G0_tau[N_TAU+1];
+	// vec_vec_d delta_tau;
+	// resize(delta_tau, N_S, N_TAU+1);
+	// for(int s=0; s<N_S; s++){
+	// 	fft_fermion_radix2_omega2tau(delta_tau[s], delta_omega[s], prm.beta, N_TAU, Vsq[s]);
+	// }
+
+	// sprintf(filename, DATA_DIR "%02d-delta_tau.dat", num);
+	// fp=fopen(filename, "w");
+	// for(int i=0; i<N_TAU; i++){
+	// 	fprintf(fp, "%.4e %.6e\n", tau[i], G0_tau[i]);
+	// 	for(int s=0; s<N_S; s++){
+	// 		fprintf(fp, " %.6e", delta_tau[s][i]);
+	// 	}
+	// }
+	// fclose(fp);
+	// printf("\n '%s'\n", filename);
 
 
-	double G0_tau[N_TAU+1];
-	fft_fermion_radix2_omega2tau(G0_tau, G0_omega[0], prm.beta, N_TAU);
-
-	sprintf(filename, DATA_DIR "%02d-Gc0_tau.dat", num);
-	fp=fopen(filename, "w");
-	for(int i=0; i<N_TAU; i++){
-		fprintf(fp, "%.4e %.6e\n", tau[i], G0_tau[i]);
-	}
-	fclose(fp);
-	printf("\n '%s'\n", filename);
-
-
-	sprintf(filename, DATA_DIR "%02d-Gc0_omega.dat", num);
-	fp=fopen(filename, "w");
-	for(int i=0; i<N_TAU/2; i++){
-// 		double exact = -prm_V_sqr * atan(prm_D / omega_f[i]) / prm_D;
-// 		double exact = -atan(prm_D / omega_f[i]) / prm_D;
-
-// 		fprintf(fp, "%d %.6e %.6e\n", i, imag(G0_omega[0][i]), exact);
-		fprintf(fp, "%d %.6e %.6e\n", i, real(G0_omega[0][i]), imag(G0_omega[0][i]));
-	}
-	fclose(fp);
-	printf(" '%s'\n", filename);
-
-	//
-	// Gf0
-	//
-	complex<double> Gf0_omega[N_TAU/2];
-
-	sprintf(filename, DATA_DIR "%02d-Gf0_omega.dat", num);
+	sprintf(filename, DATA_DIR "%02d-delta_omega.dat", num);
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
-		complex<double> i_omega_n = IMAG * (double)(2*i+1) * M_PI / prm.beta;
-		Gf0_omega[i] = 1.0 / (i_omega_n - prm.ef[0] + prm_chem_pot - 0.5*prm.U[0][0]
-		 - prm_V_sqr[0] * G0_omega[0][i]);
-
-		fprintf(fp, "%d %.6e %.6e\n", i, real(Gf0_omega[i]), imag(Gf0_omega[i]));
+		fprintf(fp, "%d", i);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e %.6e", real(delta_omega[s][i]), imag(delta_omega[s][i]));
+		}
+		fprintf(fp, "\n");
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
 
-
-	double Gf0_tau[N_TAU+1];
-	fft_fermion_radix2_omega2tau(Gf0_tau, Gf0_omega, prm.beta, N_TAU);
-
-	sprintf(filename, DATA_DIR "%02d-Gf0_tau.dat", num);
-	fp=fopen(filename, "w");
-	for(int i=0; i<N_TAU; i++){
-		fprintf(fp, "%.4e %.6e\n", tau[i], Gf0_tau[i]);
-	}
-	fclose(fp);
-	printf(" '%s'\n", filename);
-
-*/
 }
 
 
@@ -827,7 +805,7 @@ int main(int argc, char* argv[])
 
 	int num = 0;
 	if(my_rank==0){
-		print_Delta(num);
+		print_Delta(num, Delta_omega);
 	}
 
 	// hybqmc_eval(flag_tp);
