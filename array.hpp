@@ -39,6 +39,7 @@ public:
     void zeros() {
         for (auto &a : array)  a = 0;
     }
+    friend void zeros(Array2D& array) { array.zeros(); }
 
 private:
     std::size_t n1, n2;
@@ -72,6 +73,7 @@ public:
     void zeros() {
         for (auto &a : array)  a = 0;
     }
+    friend void zeros(Array3D& array) { array.zeros(); }
 
 private:
     std::size_t n1, n2, n3;

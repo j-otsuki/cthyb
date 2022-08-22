@@ -56,7 +56,7 @@ double *TP_tau;  // [N_TP+1]
 
 //============================================================================
 //
-// DEFINITION OF STRUCT
+// DEFINITION OF STRUCT (INPUT)
 //
 
 struct hyb_qmc_params{
@@ -70,6 +70,21 @@ struct hyb_qmc_params{
 	}
 };
 
+struct num_mc{
+// 	int N_WARMUP;
+	int N_MSR;
+	int N_BIN;
+	int N_ADD;  // to be optimized if N_ADD<0.  R_ADD = -N_ADD / 10.
+	int N_SHIFT;  // to be optimized if N_SHIFT<0.  R_SHIFT = -N_SHIFT / 10.
+// The most part of the configuration is expected to be updated,
+// when R_ADD=1 (N_ADD=-10) or R_SHIFT=1 (N_SHIFT=-10).
+};
+
+//============================================================================
+//
+// DEFINITION OF STRUCT (OUTPUT)
+//
+
 struct single_particle{
 	vec_d Gf_tau, Gf_tau_err;  // [N_TAU+1]
 	vec_c Gf_omega;  // [N_TAU/2];
@@ -79,12 +94,8 @@ struct single_particle{
 	vec_c self_f;  // [N_TAU/2]
 
 	single_particle() {};
-	single_particle(int n_tau){
-		Gf_tau.resize(n_tau+1);
-		Gf_tau_err.resize(n_tau+1);
-		Gf_omega.resize(n_tau/2);
-		self_f.resize(n_tau/2);
-	};
+	single_particle(int n_tau);
+	void allzeros();
 };
 
 struct two_particle{
@@ -92,11 +103,8 @@ struct two_particle{
 	vec_c chi_omega;  // [N_TP2+1]
 
 	two_particle() {};
-	two_particle(int n_tp, int n_tp2){
-		chi_tau.resize(n_tp+1);
-		chi_tau_err.resize(n_tp+1);
-		chi_omega.resize(n_tp2+1);
-	};
+	two_particle(int n_tp, int n_tp2);
+	void allzeros();
 };
 
 struct phys_quant{
@@ -111,30 +119,14 @@ struct phys_quant{
 	double stat_suscep_ch, stat_suscep_ch_err;
 
 	phys_quant() {};
-	phys_quant(int n_s, int n_k){
-		resize(Z_k, n_s, n_k);
-		resize(Z_k_err, n_s, n_k);
-		Z_ktot.resize(n_s*n_k);
-		Z_ktot_err.resize(n_s*n_k);
-		ave_k.resize(n_s);
-		ave_k_err.resize(n_s);
-	};
-};
-
-using t_sp = std::vector<struct single_particle>;
-using t_tp = std::vector<std::vector<struct two_particle> >;
-
-struct num_mc{
-// 	int N_WARMUP;
-	int N_MSR;
-	int N_BIN;
-	int N_ADD;  // to be optimized if N_ADD<0.  R_ADD = -N_ADD / 10.
-	int N_SHIFT;  // to be optimized if N_SHIFT<0.  R_SHIFT = -N_SHIFT / 10.
-// The most part of the configuration is expected to be updated,
-// when R_ADD=1 (N_ADD=-10) or R_SHIFT=1 (N_SHIFT=-10).
+	phys_quant(int n_s, int n_k);
+	void allzeros();
 };
 
 //============================================================================
+
+using t_sp = std::vector<struct single_particle>;
+using t_tp = std::vector<std::vector<struct two_particle> >;
 
 class HybQMC{
 public:
@@ -261,8 +253,7 @@ private:
 		Array3D<double> chi; // [N_S][N_S][N_TP+1]
 
 		phys_quant_bin() {};
-		phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp) : n_k(n_s, n_k), n_ktot(n_s*n_k), Gf(n_s, n_tau+1), f_number(n_s), f_number_int(n_s), chi(n_s, n_s, n_tp+1) {};
-
+		phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp);
 		void allzeros();
 	};
 	phys_quant_bin B, B_TOT;

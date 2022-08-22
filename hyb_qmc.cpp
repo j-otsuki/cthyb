@@ -39,6 +39,105 @@ static double tau_length(Operators &F, double);
 static double tau_overlap(double, double, Operators &, double);
 
 
+//============================================================================
+
+single_particle::single_particle(int n_tau)
+	: Gf_tau(n_tau+1)
+	, Gf_tau_err(n_tau+1)
+	, Gf_omega(n_tau/2)
+	, self_f(n_tau/2)
+{}
+
+void single_particle::allzeros()
+{
+	zeros(Gf_tau);
+	zeros(Gf_tau_err);
+	zeros(Gf_omega);
+
+	f_number = f_number_err = 0;
+	f_number2 = f_number2_err = 0;
+}
+
+//============================================================================
+
+two_particle::two_particle(int n_tp, int n_tp2)
+	: chi_tau(n_tp+1)
+	, chi_tau_err(n_tp+1)
+	, chi_omega(n_tp2+1)
+{}
+
+void two_particle::allzeros()
+{
+	zeros(chi_tau);
+	zeros(chi_tau_err);
+	zeros(chi_omega);
+}
+
+//============================================================================
+
+phys_quant::phys_quant(int n_s, int n_k)
+	: Z_ktot(n_s*n_k)
+	, Z_ktot_err(n_s*n_k)
+	, ave_k(n_s)
+	, ave_k_err(n_s)
+{
+	resize(Z_k, n_s, n_k);
+	resize(Z_k_err, n_s, n_k);
+
+	ave_sign = ave_sign_err = 0;
+	ave_ktot = ave_ktot_err = 0;
+	occup_tot = occup_tot_err = 0;
+	occup_mom = occup_mom_err = 0;
+	stat_suscep_sp = stat_suscep_sp_err = 0;
+	stat_suscep_ch = stat_suscep_ch_err = 0;
+}
+
+void phys_quant::allzeros()
+{
+	ave_sign = ave_sign_err = 0;
+	ave_ktot = ave_ktot_err = 0;
+	occup_tot = occup_tot_err = 0;
+	occup_mom = occup_mom_err = 0;
+	stat_suscep_sp = stat_suscep_sp_err = 0;
+	stat_suscep_ch = stat_suscep_ch_err = 0;
+	ave_sign = ave_sign_err = 0;
+	ave_ktot = ave_ktot_err = 0;
+
+	zeros(Z_k);
+	zeros(Z_k_err);
+	zeros(Z_ktot);
+	zeros(Z_ktot_err);
+	zeros(ave_k);
+	zeros(ave_k_err);
+}
+
+//============================================================================
+
+HybQMC::phys_quant_bin::phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp)
+	: n_k(n_s, n_k)
+	, n_ktot(n_s*n_k)
+	, Gf(n_s, n_tau+1)
+	, f_number(n_s)
+	, f_number_int(n_s)
+	, chi(n_s, n_s, n_tp+1)
+{
+	ave_sign = 0;
+	occup_tot = occup_mom = 0;
+}
+
+void HybQMC::phys_quant_bin::allzeros()
+{
+	ave_sign = 0;
+	occup_tot = occup_mom = 0;
+
+	zeros(n_k);
+	zeros(n_ktot);
+	zeros(Gf);
+	zeros(f_number);
+	zeros(f_number_int);
+	zeros(chi);
+}
+
 
 //============================================================================
 //
@@ -603,79 +702,26 @@ void HybQMC::init_mc_config()
 
 void HybQMC::init_measure()
 {
-// 	n_measure=0;
+	PQ.allzeros();
 
-	PQ.ave_sign = 0;
-	PQ.ave_sign_err = 0;
-
-	PQ.ave_ktot = PQ.ave_ktot_err = 0;
-	zeros(PQ.Z_k);
-	zeros(PQ.Z_k_err);
-	zeros(PQ.Z_ktot);
-	zeros(PQ.Z_ktot_err);
-	zeros(PQ.ave_k);
-	zeros(PQ.ave_k_err);
-
-	//
-	// SP
-	//
 	for(int s=0; s<N_S; s++){
-		for(int i=0; i<=N_TAU; i++){
-			SP[s].Gf_tau[i]=0;
-			SP[s].Gf_tau_err[i]=0;
-		}
-
-		SP[s].f_number = 0;
-		SP[s].f_number_err = 0;
-		SP[s].f_number2 = 0;
-		SP[s].f_number2_err = 0;
+		SP[s].allzeros();
 	}
 
-	PQ.occup_tot = PQ.occup_tot_err = 0;
-	PQ.occup_mom = PQ.occup_mom_err = 0;
-
-	//
-	// TP
-	//
-	PQ.stat_suscep_sp=0;
-	PQ.stat_suscep_ch=0;
-	PQ.stat_suscep_sp_err=0;
-	PQ.stat_suscep_ch_err=0;
-
-	for(int i=0; i<=N_TP; i++){
-		for(int s1=0; s1<N_S; s1++){
-			for(int s2=0; s2<N_S; s2++){
-				TP[s1][s2].chi_tau[i] = 0;
-				TP[s1][s2].chi_tau_err[i] = 0;
-			}
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			TP[s1][s2].allzeros();
 		}
-
-		TP_sp.chi_tau[i] = 0;
-		TP_sp.chi_tau_err[i] = 0;
-		TP_ch.chi_tau[i] = 0;
-		TP_ch.chi_tau_err[i] = 0;
 	}
+	TP_sp.allzeros();
+	TP_ch.allzeros();
 }
 
-void HybQMC::phys_quant_bin::allzeros()
-{
-	ave_sign = 0;
-	occup_tot = occup_mom = 0;
-
-	// vector
-	zeros(n_ktot);
-	zeros(f_number);
-	zeros(f_number_int);
-
-	// Array2D, Array3D
-	n_k.zeros();
-	Gf.zeros();
-	chi.zeros();
-}
 void HybQMC::init_measure_bin()
 {
 	B.allzeros();
 }
+
 //============================================================================
 //
 // MEASUREMENT
