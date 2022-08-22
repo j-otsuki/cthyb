@@ -25,198 +25,9 @@ static const char tag[64] = "v1.12";
 
 using namespace std;
 
-// #define DMFT_ISO 1
-// 0: inisotropic bath, 1: isotropic bath
-
-// #define DMFT_OUTPUT_ITER 0
-// output cavity Green function at each iteraction
-
-// int DMFT_ITER=0;
-// double DMFT_UPDATE_RATE=1.0;
-
-// int N_PADE = std::min(N_TAU/2, 8192);
-
-
-// struct hyb_qmc_params prm;
-// double prm_ave_n, prm_chem_pot;
-// double prm_V_sqr[N_S], prm_V_sqr_imp[N_S], prm_D, prm_f_disp=0;
-// double prm_E_f[N_S], prm_E_c[N_S];
-
-// struct num_mc n_mc;
-
-// struct phys_quant *PQ;
-// struct single_particle *SP;
-// struct two_particle **TP, *TP_sp, *TP_ch;
-// struct two_particle_tr *TP_tr;
-// double *TP_tau;
-// struct phonon_g *D;
-
-// complex<double> G0_omega[N_S][N_TAU/2];
-
-// struct dmft_green_func G;
-// struct dmft_green_func *G;
-
-// double SP_c_number[N_S];
-
 int my_rank;
 
-// int flag_tp;
-// char str_flag[2][100]={
-// 	"single-particle Green function",  // 0
-// 	"single-particle & two-particle Green function",  // 1
-// };
-
-// int flag_dmft;
-// char str_dmft[2][100]={
-// 	"impurity problem",
-// 	"DMFT",
-// };
-
-// int flag_ensemble;
-// char str_ensemble[2][100]={
-// 	"grand canonical ensemble (chemical potential given)",
-// 	"canonical ensemble (band filling given)"
-// };
-
-
-
 // ============================================================================
-
-/*
-void init_params()
-{
-	FILE *fp;
-	if( (fp = fopen("hyb_qmc_param.init", "r")) == NULL ){
-		printf("'hyb_qmc_param.init' not found\n");
-		exit(0);
-	}
-
-	if(my_rank==0){
-		printf("\nCT-QMC for the Anderson model (CT-HYB)  %s\n", tag);
-		// printf(" DOS = %d\n", DOS);
-	}
-
-	double data[16];
-
-	if( read_data(fp, data) != 1 )  exit(0);
-	i_program = (int)data[0];
-
-	if( read_data(fp, data) != 1 )  exit(0);
-	flag_tp = (int)data[0];
-
-	switch( read_data(fp, data) ){
-		// case 4:
-		// 	prm_f_disp = data[3];
-		// case 3:
-		// 	DMFT_UPDATE_RATE = data[2];
-		// case 2:
-		// 	DMFT_ITER = (int)data[1];
-		// case 1:
-		// 	flag_dmft = (int)data[0];
-		// 	break;
-		default:
-			// exit(0);
-			break;
-	}
-
-	if( read_data(fp, data) != 2 )  exit(0);
-	// flag_ensemble = (int)data[0];
-	// if( flag_ensemble==0 ){  // mu given
-	// 	prm_chem_pot = data[1];
-	// }
-	// else{  // n given
-	// 	prm_ave_n = data[1];
-	// 	prm_chem_pot = 0;
-	// }
-
-	double prm_epsilon_f, prm_H;
-
-	double prm_U;
-	if( fscanf(fp, "%lf %lf %lf %lf", &prm_D, &prm_V_sqr[0], &prm_epsilon_f, &prm_U) != 4 )  exit(0);
-	if( fscanf(fp, "%lf %lf", &prm.beta, &prm_H) != 2 )  exit(0);
-	if( isinf(prm_U) )  prm.UINF = 1;
-
-	// if(PHONON){
-	// 	if( fscanf(fp, "%lf %lf", &prm.w_ph, &prm.g) != 2 )  exit(0);
-	// }
-
-	if(my_rank==0){
-		// printf("\n %d: %s\n", i_program, str_program[i_program]);
-		printf("\n %d:\n", i_program);
-		printf(" %d: %s\n", flag_tp, str_flag[flag_tp]);
-		// printf(" %d: %s\n", flag_dmft, str_dmft[flag_dmft]);
-		// printf(" %d: %s\n", flag_ensemble, str_ensemble[flag_ensemble]);
-
-		printf("\n D = %.4e\n", prm_D);
-		printf(" V_sqr = %.4e\n", prm_V_sqr[0]);
-		printf(" epsilon_f = %.4e\n", prm_epsilon_f);
-		printf(" U = %.4e  (UINF = %d)\n", prm_U, prm.UINF);
-		printf(" beta = %.4e\n", prm.beta);
-		printf(" H = %.4e\n", prm_H);
-		// if(PHONON){
-		// 	printf(" w_ph = %.4e\n", prm.w_ph);
-		// 	printf(" g = %.4e\n", prm.g);
-		// }
-
-		// if( !flag_ensemble )  printf(" chem_pot = %.4e\n", prm_chem_pot);  // grand canonical
-		// else                  printf(" ave_nc = %.4e\n", prm_ave_n);  // canonical
-
-		// if( flag_dmft==1 ){
-		// 	printf(" DMFT_ITER = %d\n", DMFT_ITER);
-		// 	printf(" DMFT_UPDATE_RATE = %.2lf\n", DMFT_UPDATE_RATE);
-		// 	printf(" f_disp = %.3lf\n", prm_f_disp);
-		// }
-		printf("\n");
-	}
-
-	for(int s=1; s<N_S; s++)  prm_V_sqr[s] = prm_V_sqr[0];
-	for(int s=0; s<N_S; s++)  prm_V_sqr_imp[s] = prm_V_sqr[s];
-	for(int s1=0; s1<N_S; s1++){
-		for(int s2=0; s2<N_S; s2++)  prm.U[s1][s2] = prm_U;
-	}
-
-	double moment_f[N_S];
-	for(int s=0; s<N_S; s++){
-		moment_f[s] = -(double)(N_S-1) * 0.5 + (double)s;
-// 		prm.ef[s] = prm_epsilon_f + prm_H * moment_f[s];
-		prm_E_f[s] = prm_epsilon_f + prm_H * moment_f[s];
-
-		prm.ef[s] = prm_E_f[s];
-
-		prm_E_c[s] = 0;
-
-		if(my_rank==0){
-			printf(" ef[%d] = %.5lf   ec[%d] = %.5lf\n", s, prm_E_f[s], s, prm_E_c[s]);
-		}
-	}
-
-
-	if( fscanf(fp, "%d %d %d %d", &n_mc.N_BIN, &n_mc.N_MSR, &n_mc.N_ADD, &n_mc.N_SHIFT) != 4 )  exit(0);
-	if(my_rank==0){
-		printf("\n N_BIN = %d  N_MSR = %d  (N_ADD = %d  N_SHIFT = %d)\n",
-		 n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
-	}
-
-	// if(i_program==1){
-	// 	if( fscanf(fp, "%d %d %lf %lf", &i_tmesh, &N_T, &T_MIN, &T_MAX) != 4 )  exit(0);
-	// }
-
-	fclose(fp);
-
-
-// 	#if PHONON
-// 	for(int s1=0; s1<N_S; s1++){
-// 		prm.ef[s1] += prm.g * prm.g / prm.w_ph;
-//
-// 		for(int s2=0; s2<N_S; s2++){
-// 			prm.U[s1][s2] -= 2.0 * prm.g * prm.g / prm.w_ph;
-// 		}
-// 	}
-// 	#endif // PHONON
-
-}
-*/
-
 
 class InputParams{
 public:
@@ -413,15 +224,15 @@ vec_d read_Vsq(const string& file_data, int n_s)
 
 // ============================================================================
 
-void print_pq(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
+void print_pq(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 {
 	int N_S = SP.size();
 
+	FILE *fp;
 	char filename[128];
-	sprintf(filename, DATA_DIR "T_depend.dat");
 
-	static FILE *fp=fopen(filename, "w");
-	fp=fopen(filename, "a");
+	sprintf(filename, "x.dat");
+	fp=fopen(filename, "w");
 
 	fprintf(fp, "%.5e", 1./prm.beta);
 	for(int s=0; s<N_S; s++)  fprintf(fp, " %.5e %.3e", SP[s].f_number, SP[s].f_number_err);
@@ -432,32 +243,18 @@ void print_pq(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 		fprintf(fp, " %.5e %.5e", real(SP[s].self_f[0]), imag(SP[s].self_f[0]));
 		fprintf(fp, " %.5e %.5e", real(SP[s].self_f[1]), imag(SP[s].self_f[1]));
 	}
-	// for(int s=0; s<N_S; s++)  fprintf(fp, " %.5e", SP_c_number[s]);
-// 	if( flag_dmft ){
-// 		fprintf(fp, " %.6e %.6e", prm_chem_pot, prm_ave_n);
-// 		for(int s=0; s<N_S; s++){
-// 			fprintf(fp, " %.5e %.5e", G[s].n_f, G[s].n_c);
-// // 			fprintf(fp, " %.5e %.5e", real(G[s].F[0])*prm_V_sqr[s], imag(G[s].F[0])*prm_V_sqr[s]);
-// // 			fprintf(fp, " %.5e %.5e", real(G[s].F[1])*prm_V_sqr[s], imag(G[s].F[1])*prm_V_sqr[s]);
-// 			fprintf(fp, " %.5e %.5e", real(G[s].self_c[0]), imag(G[s].self_c[0]));
-// 			fprintf(fp, " %.5e %.5e", real(G[s].self_c[1]), imag(G[s].self_c[1]));
-// 		}
-// 	}
-// 	if( PHONON ){
-// 		fprintf(fp, " %.6e", D->occup);
-// 	}
-
 	fprintf(fp, "\n");
+
 	fclose(fp);
-	printf("\n '%s' updated\n", filename);
+	printf("\n '%s'\n", filename);
 }
 
-void print_statistics(int num, phys_quant& PQ)
+void print_statistics(phys_quant& PQ)
 {
 	FILE *fp;
-	char filename[40];
+	char filename[128];
 
-	sprintf(filename, DATA_DIR "%02d-stat.dat", num);
+	sprintf(filename, "stat.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<PQ.Z_k[0].size(); i++){
 		fprintf(fp, "%d", i);
@@ -467,22 +264,11 @@ void print_statistics(int num, phys_quant& PQ)
 		}
 		fprintf(fp, "\n");
 	}
-	printf("\n '%s'\n", filename);
 	fclose(fp);
-
-	// sprintf(filename, DATA_DIR "%02d-stat_tot.dat", num);
-	// fp=fopen(filename, "w");
-	// for(int i=0; i<PQ.Z_ktot.size(); i++){
-	// 	fprintf(fp, "%d", i);
-	// 	if( PQ.Z_ktot[i] != 0. )  fprintf(fp, " %.5e", PQ.Z_ktot[i]);
-	// 	else  fprintf(fp, " ?");
-	// 	fprintf(fp, "\n");
-	// }
-	// printf("\n '%s'\n", filename);
-	// fclose(fp);
+	printf("\n '%s'\n", filename);
 }
 
-void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
+void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 {
 	int N_S = SP.size();
 	int N_TAU = SP[0].Gf_tau.size() - 1;
@@ -495,19 +281,17 @@ void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& S
 	printf(" tot: %lf +- %lf\n", PQ.occup_tot, PQ.occup_tot_err);
 
 	FILE *fp;
-	char filename[40];
+	char filename[128];
 
 	double tau[N_TAU+1];
 	for(int i=0; i<=N_TAU; i++){
 		tau[i] = (double)i * prm.beta / (double)N_TAU;
 	}
 
-
-	sprintf(filename, DATA_DIR "%02d-Gf_tau.dat", num);
+	sprintf(filename, "Gf_tau.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<=N_TAU; i++){
-		fprintf(fp, "%.3e", tau[i]);
-
+		fprintf(fp, "%.4e", tau[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", SP[s].Gf_tau[i], SP[s].Gf_tau_err[i]);
 		}
@@ -516,11 +300,15 @@ void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& S
 	fclose(fp);
 	printf("\n '%s'\n", filename);
 
+	double iw[N_TAU/2];
+	for(int i=0; i<N_TAU/2; i++){
+		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
+	}
 
-	sprintf(filename, DATA_DIR "%02d-Gf_omega.dat", num);
+	sprintf(filename, "Gf_omega.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
-		fprintf(fp, "%d", i);
+		fprintf(fp, "%.4e", iw[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", real(SP[s].Gf_omega[i]), imag(SP[s].Gf_omega[i]));
 		}
@@ -548,7 +336,7 @@ void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& S
 	// 		pade_init(i_omega_f, SP[s].Gf_omega.data(), Gf_pade[s], N_PADE);
 	// 	}
 
-	// 	sprintf(filename, DATA_DIR "%02d-Gf_pade.dat", num);
+	// 	sprintf(filename, "Gf_pade.dat");
 	// 	fp=fopen(filename, "w");
 	// 	for(int i=0; i<1000; i++){
 
@@ -571,11 +359,11 @@ void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& S
 	// }
 
 
-	sprintf(filename, DATA_DIR "%02d-self_f.dat", num);
+	sprintf(filename, "self_f.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
 // 	for(int i=0; i<100; i++){
-		fprintf(fp, "%d", i);
+		fprintf(fp, "%.4e", iw[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", real(SP[s].self_f[i]), imag(SP[s].self_f[i]));
 		}
@@ -583,54 +371,23 @@ void print_single_particle(int num, hyb_qmc_params& prm, phys_quant& PQ, t_sp& S
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
-
 }
 
 
-void print_two_particle(int num, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& TP_sp, two_particle& TP_ch)
+void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& TP_sp, two_particle& TP_ch)
 {
 	printf("\n static susceptibility\n");
 	printf("  spin   : %.5e +- %.4e\n", PQ.stat_suscep_sp, PQ.stat_suscep_sp_err);
 	printf("  charge : %.5e +- %.4e\n", PQ.stat_suscep_ch, PQ.stat_suscep_ch_err);
-
-// 	printf("\n static susceptibility (test)\n");
-// 	printf("  spin   : %.5e\n", real(TP_sp.chi_omega[0]));
-// 	printf("  charge : %.5e\n", real(TP_ch.chi_omega[0]));
-
 
 	int N_S = TP.size();
 	int N_TP = TP[0][0].chi_tau.size() - 1;
 	int N_TP2 = TP[0][0].chi_omega.size() - 1;
 
 	FILE *fp;
-	char filename[40];
+	char filename[128];
 
-// 	double tau[N_TAU+1];
-// 	for(int i=0; i<=N_TAU; i++){
-// 		tau[i] = (double)i * prm.beta / (double)N_TAU;
-// 	}
-
-	//
-	// non-interacting
-	//
-	// double Gf0_tau[N_TAU+1];
-	// Gf_calc_fft(Gf0_tau, prm.beta, prm_D, prm.ef[0], prm.U[0][0], prm_V_sqr_imp[0]);
-	// Gf0_tau[N_TAU] = -1.0 - Gf0_tau[0];
-
-	// double chi0_tau[N_TAU+1];
-	// for(int i=0; i<=N_TAU/2; i++)  chi0_tau[i] = Gf0_tau[i] * Gf0_tau[N_TAU-i];
-
-	// sprintf(filename, DATA_DIR "%02d-chi0.dat", num);
-	// fp=fopen(filename, "w");
-	// for(int i=0; i<=N_TAU/2; i++){
-	// 	double tau = (double)i * prm.beta / (double)N_TAU;
-	// 	fprintf(fp, "%.5e %.5e\n", tau, chi0_tau[i]);
-	// }
-	// fclose(fp);
-	// printf("\n '%s'\n", filename);
-
-
-	sprintf(filename, DATA_DIR "%02d-chi_tau.dat", num);
+	sprintf(filename, "chi_tau.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<=N_TP; i++){
 // 		double tau = (double)i * prm.beta / (double)(2*N_TP);
@@ -649,7 +406,7 @@ void print_two_particle(int num, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_pa
 
 
 
-	sprintf(filename, DATA_DIR "%02d-chi_omega.dat", num);
+	sprintf(filename, "chi_omega.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TP2; i++){
 		fprintf(fp, "%d %.5e %.5e\n", i, real(TP_sp.chi_omega[i]), real(TP_ch.chi_omega[i]));
@@ -665,7 +422,7 @@ void print_two_particle(int num, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_pa
 	// pade_init(i_omega_b, TP_sp.chi_omega.data(), chi_sp_pade, N_TP2);
 	// pade_init(i_omega_b, TP_ch.chi_omega.data(), chi_ch_pade, N_TP2);
 
-	// sprintf(filename, DATA_DIR "%02d-chi_pade.dat", num);
+	// sprintf(filename, "chi_pade.dat");
 	// fp=fopen(filename, "w");
 	// for(int i=0; i<1000; i++){
 	// 	complex<double> w = 1.0 * prm_D / 999. * (double)i;
@@ -678,47 +435,51 @@ void print_two_particle(int num, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_pa
 	// }
 	// fclose(fp);
 	// printf(" '%s'\n", filename);
-
-
 }
 
 
-void print_Delta(int num, vec_vec_c& delta_omega)
+void print_Delta(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 {
 	int N_S = delta_omega.size();
 	int N_TAU = delta_omega[0].size() * 2;
 
 	FILE *fp;
-	char filename[40];
+	char filename[128];
 
-	// double tau[N_TAU+1];
-	// for(int i=0; i<=N_TAU; i++){
-	// 	tau[i] = (double)i * prm.beta / (double)N_TAU;
-	// }
+	double tau[N_TAU+1];
+	for(int i=0; i<=N_TAU; i++){
+		tau[i] = (double)i * prm.beta / (double)N_TAU;
+	}
 
 	// double G0_tau[N_TAU+1];
-	// vec_vec_d delta_tau;
-	// resize(delta_tau, N_S, N_TAU+1);
-	// for(int s=0; s<N_S; s++){
-	// 	fft_fermion_radix2_omega2tau(delta_tau[s], delta_omega[s], prm.beta, N_TAU, Vsq[s]);
-	// }
+	vec_vec_d delta_tau;
+	resize(delta_tau, N_S, N_TAU+1);
+	for(int s=0; s<N_S; s++){
+		fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
+	}
 
-	// sprintf(filename, DATA_DIR "%02d-delta_tau.dat", num);
-	// fp=fopen(filename, "w");
-	// for(int i=0; i<N_TAU; i++){
-	// 	fprintf(fp, "%.4e %.6e\n", tau[i], G0_tau[i]);
-	// 	for(int s=0; s<N_S; s++){
-	// 		fprintf(fp, " %.6e", delta_tau[s][i]);
-	// 	}
-	// }
-	// fclose(fp);
-	// printf("\n '%s'\n", filename);
+	sprintf(filename, "delta_tau.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_TAU; i++){
+		fprintf(fp, "%.4e", tau[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e", delta_tau[s][i]);
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf("\n '%s'\n", filename);
 
 
-	sprintf(filename, DATA_DIR "%02d-delta_omega.dat", num);
+	double iw[N_TAU/2];
+	for(int i=0; i<N_TAU/2; i++){
+		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
+	}
+
+	sprintf(filename, "delta_omega.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
-		fprintf(fp, "%d", i);
+		fprintf(fp, "%.4e", iw[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", real(delta_omega[s][i]), imag(delta_omega[s][i]));
 		}
@@ -729,11 +490,7 @@ void print_Delta(int num, vec_vec_c& delta_omega)
 
 }
 
-
-
 // ============================================================================
-
-
 
 int main(int argc, char* argv[])
 {
@@ -782,9 +539,8 @@ int main(int argc, char* argv[])
 	// Read and set Delta(iw)
 	vec_vec_c Delta_omega = read_Delta(in.file_Delta, in.n_s, in.n_tau/2);
 	vec_d Vsq = read_Vsq(in.file_Vsq, in.n_s);
-	int num = 0;
 	if(my_rank==0){
-		print_Delta(num, Delta_omega);
+		print_Delta(prm, Delta_omega, Vsq);
 	}
 	Q.set_Delta(Delta_omega, Vsq);
 
@@ -803,20 +559,18 @@ int main(int argc, char* argv[])
 
 	// Output results
 	if(my_rank==0){
-		print_pq(num, prm, PQ, SP);
-		print_statistics(num, PQ);
-		print_single_particle(num, prm, PQ, SP);
+		print_pq(prm, PQ, SP);
+		print_statistics(PQ);
+		print_single_particle(prm, PQ, SP);
 
 		if(flag_tp){
-			print_two_particle(num, PQ, TP, TP_tau, TP_sp, TP_ch);
+			print_two_particle(PQ, TP, TP_tau, TP_sp, TP_ch);
 		}
 
 		clock_t time_end = clock();
 		print_time(time_start, time_end);
 	// 	print_time(time_start, time_end, LOG_FILE);
 	}
-
-	// hybqmc_final();
 
 	#if HYB_QMC_MPI
 	MPI_Finalize();
