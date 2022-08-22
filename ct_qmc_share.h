@@ -30,7 +30,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 // #define N_K 1024  // maximum number of k
 // #define N_TAU 1024  // discretization of beta
-#define DATA_DIR "output/"
+#define DATA_DIR "./"
 
 // #define DOS 0
 // 0: constant
