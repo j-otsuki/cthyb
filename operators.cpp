@@ -15,7 +15,7 @@ Operators::Operators(int max_k)
 	: max_k(max_k)
 	, k(0)
 	, D(max_k)
-	, flag(1)
+	, wind(false)
 	, tau1(max_k)
 	, tau2(max_k)
 	, beta(-1e100)
@@ -64,7 +64,7 @@ bool Operators::is_occupied(double tau) const
 	int i_tau2 = tau_order(tau2, tau);
 
 	bool occupied;
-	if( flag==1 ){  // no wind
+	if( !wind ){  // no wind
 		occupied = (i_tau1 != i_tau2);
 	}
 	else{  // wind
@@ -80,7 +80,7 @@ double Operators::length() const
 	for(int i=0; i<k; i++){
 		l += tau1[i] - tau2[i];
 	}
-	if(flag==0)  l += beta;
+	if(wind)  l += beta;
 
 	return(l);
 }
@@ -89,7 +89,7 @@ double Operators::overlap(double tau_from, double tau_to) const
 {
 	if( k == 0 ){
 		double l_over = 0;
-		if( flag == 0 ){  // |1>
+		if( wind ){  // |1>
 			l_over = tau_to - tau_from;
 			if( l_over < 0 )  l_over += beta;
 		}
@@ -101,7 +101,7 @@ double Operators::overlap(double tau_from, double tau_to) const
 	double *l1, *l2, l_comp, l_over, l_total;
 	int n=0;
 
-	if(flag){
+	if( !wind ){
 		tau1 = &this->tau1;
 		tau2 = &this->tau2;
 		l1 = &l_over;

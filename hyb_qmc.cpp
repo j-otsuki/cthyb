@@ -746,8 +746,7 @@ inline void HybQMC::measure_sp()
 	// f number
 	//
 	for(int s=0; s<N_S; s++){
-// 		if(S[s].flag==0)  B.f_number_int[s] ++;
-		if(S[s].flag==0)  B.f_number_int[s] += w_sign;
+		if(S[s].wind)  B.f_number_int[s] += w_sign;
 	}
 
 	for(int s=0; s<N_S; s++){
@@ -820,7 +819,7 @@ static inline void arrange_1array(Operators& F, double* tau, int* flag_exist, in
 	// double *temp_tau1, *temp_tau2;
 	std::vector<double> *temp_tau1, *temp_tau2;
 
-	if(F.flag){
+	if(!F.wind){
 		for(int i=0; i<F.k*n; i++){
 			flag_exist[2*i] = 0;
 			flag_exist[2*i+1] = 1;
@@ -1532,14 +1531,13 @@ static inline void rem_tau(Operators &F, int i_tau1, int i_tau2, double beta)
 // *tau2 : creation
 // tau_ins : creation
 // i_tau_ins is stored
-static int reject_create_seg(std::vector<double> &F_tau1, std::vector<double> &F_tau2, int k, int wind, double tau_ins, int &i_tau_ins, double &l_max, double beta)
+static int reject_create_seg(std::vector<double> &F_tau1, std::vector<double> &F_tau2, int k, bool wind, double tau_ins, int &i_tau_ins, double &l_max, double beta)
 {
-// 	int wind = F->flag==1 ? 0 : 1;
 	if( k ){
 		// i_tau_ins = tau_order(F_tau2, k, tau_ins);
 		i_tau_ins = tau_order(F_tau2, tau_ins);
 
-		int i_tau1 = wind==0 ? i_tau_ins-1 : i_tau_ins;
+		int i_tau1 = wind ? i_tau_ins : i_tau_ins-1;
 		if( i_tau1 >= 0 && F_tau1[i_tau1] > tau_ins )  return 1;  // reject
 		l_max = F_tau2[i_tau_ins] - tau_ins;
 	}
@@ -1552,8 +1550,7 @@ static int reject_create_seg(std::vector<double> &F_tau1, std::vector<double> &F
 }
 static int reject_create_seg(Operators &F, double tau_ins, int &i_tau_ins, double &l_max, double beta)
 {
-	int wind = F.flag==1 ? 0 : 1;
-	return reject_create_seg(F.tau1, F.tau2, F.k, wind, tau_ins, i_tau_ins, l_max, beta);
+	return reject_create_seg(F.tau1, F.tau2, F.k, F.wind, tau_ins, i_tau_ins, l_max, beta);
 }
 
 template <typename T>
@@ -1578,7 +1575,7 @@ void HybQMC::add_seg(int sigma, int anti)
 	double tau2;  // for f-creation operator
 	int i_tau1, i_tau2;
 	double l_max, b_fac;
-	int flag_change=0;
+	bool flag_change = false;
 
 	{
 		double tau_l, tau_r;
@@ -1587,7 +1584,7 @@ void HybQMC::add_seg(int sigma, int anti)
 		// double *F_tau_l = F->tau1, *F_tau_r = F->tau2;
 		std::vector<double> *F_tau_l = &(F->tau1), *F_tau_r = &(F->tau2);
 
-		int wind = F->flag==1 ? 0 : 1;
+		bool wind = F->wind;
 		if( anti ){
 			exchange_values(F_tau_l, F_tau_r);
 			wind ^= 1;
@@ -1618,13 +1615,12 @@ void HybQMC::add_seg(int sigma, int anti)
 			}
 		}
 
-// 		i_tau1 = wind==0 ? i_tau2 : i_tau2 + 1;
-		i_tau_l = wind==0 ? i_tau_r : i_tau_r + 1;
+		i_tau_l = wind ? i_tau_r + 1 : i_tau_r;
 		double l_seg = rand_tau_l(l_max);
 		tau_l = tau_r + l_seg;
 		if( tau_l >= prm.beta ){
 			tau_l -= prm.beta;
-			flag_change = 1;
+			flag_change = true;
 			i_tau_l = 0;
 		}
 
@@ -1682,7 +1678,7 @@ void HybQMC::add_seg(int sigma, int anti)
 		// add_tau(*F, i_tau1, tau1, i_tau2, tau2);
 		add_tau(*F, i_tau1, tau1, i_tau2, tau2, prm.beta);
 
-		F->flag = (F->flag + flag_change)%2;
+		F->wind ^= flag_change;
 
 		//
 		// update mat_M
@@ -1700,7 +1696,7 @@ void HybQMC::add_seg(int sigma, int anti)
 		for(int i=0; i<F->k; i++){
 			printf("%3d  %8.5lf  %8.5lf\n", i, F->tau1[i], F->tau2[i]);
 		}
-		printf("  flag=%d\n", F->flag);
+		printf("  wind=%d\n", F->wind);
 		#endif
 	}
 }
@@ -1726,13 +1722,13 @@ void HybQMC::rem_seg(int sigma, int anti)
 	printf("\nrem_seg  (sigma=%d anti=%d)\n", sigma, anti);
 	#endif
 
-	int flag_change=0;
+	bool flag_change = false;
 	int i_tau1, i_tau2;
 	double l_max, b_fac;
 	{
 		// double *F_tau_l = F->tau1, *F_tau_r = F->tau2;
 		std::vector<double> *F_tau_l = &(F->tau1), *F_tau_r = &(F->tau2);
-		int wind = F->flag==1 ? 0 : 1;
+		int wind = F->wind;
 		if( anti ){
 			exchange_values(F_tau_l, F_tau_r);
 			wind ^= 1;
@@ -1742,12 +1738,12 @@ void HybQMC::rem_seg(int sigma, int anti)
 		// choose tau1 & tau2
 		//
 		int i_tau_r = rand_int(F->k);
-		int i_tau_l = wind==0 ? i_tau_r : i_tau_r + 1;  // may be i_tau_l==F->k
+		int i_tau_l = wind ? i_tau_r + 1 : i_tau_r;  // may be i_tau_l==F->k
 
 		double l_seg = (*F_tau_l)[i_tau_l] - (*F_tau_r)[i_tau_r];
 		if( i_tau_l == F->k ){
 			i_tau_l = 0;
-			flag_change = 1;
+			flag_change = true;
 		}
 
 		l_max = prm.beta;
@@ -1816,7 +1812,7 @@ void HybQMC::rem_seg(int sigma, int anti)
 // 		void remove_tau(Operators &F, int i_tau1, int i_tau2);
 		rem_tau(*F, i_tau1, i_tau2, prm.beta);
 
-		F->flag = (F->flag + flag_change)%2;
+		F->wind ^= flag_change;
 
 		//
 		// update mat_M : delete row [i_tau1] & column [i_tau2]
@@ -1834,7 +1830,7 @@ void HybQMC::rem_seg(int sigma, int anti)
 		for(int i=0; i<F->k; i++){
 			printf("%3d  %8.5lf  %8.5lf\n", i, F->tau1[i], F->tau2[i]);
 		}
-		printf("  flag=%d\n", F->flag);
+		printf("  wind=%d\n", F->wind);
 		#endif
 	}
 }
@@ -1860,7 +1856,7 @@ void HybQMC::state0_change(int sigma)
 	double ln_b_fac = prm.beta * prm.ef[sigma];
 	if( prm.UINF ){
 		for(int r=0; r<N_S-1; r++){
-			if( S[s_ref[r]].k || S[s_ref[r]].flag==0 )  return;
+			if( S[s_ref[r]].k || S[s_ref[r]].wind )  return;
 		}
 	}
 	else{
@@ -1869,7 +1865,7 @@ void HybQMC::state0_change(int sigma)
 		}
 	}
 
-	if( S[sigma].flag )  ln_b_fac = -ln_b_fac;  // |0> -> |1>
+	if( !S[sigma].wind )  ln_b_fac = -ln_b_fac;  // |0> -> |1>
 	double prob = exp(ln_b_fac);
 
 	unsigned long n_accept_temp=0, n_reject_temp=0;
@@ -1877,7 +1873,7 @@ void HybQMC::state0_change(int sigma)
 // 	if( metropolis(prob, n_accept_temp, n_reject_temp) ){
 	if( metropolis_abs(fabs(prob), n_accept_temp, n_reject_temp) ){
 
-		S[sigma].flag = (S[sigma].flag + 1)%2;
+		S[sigma].wind ^= true;
 		if(prob<0)  w_sign = -w_sign;
 	}
 }
@@ -1916,9 +1912,9 @@ void HybQMC::state0_change_2(int sigma1, int sigma2)
 	double ln_b_fac1 = prm.beta * prm.ef[sigma1];
 	double ln_b_fac2 = prm.beta * prm.ef[sigma2];
 	if( prm.UINF ){
-		if( S[sigma1].flag == S[sigma2].flag )  return;
+		if( S[sigma1].wind == S[sigma2].wind )  return;
 		for(int r=0; r<N_S-2; r++){
-			if( S[s_ref[r]].k || S[s_ref[r]].flag==0 )  return;
+			if( S[s_ref[r]].k || S[s_ref[r]].wind )  return;
 		}
 	}
 	else{
@@ -1929,21 +1925,20 @@ void HybQMC::state0_change_2(int sigma1, int sigma2)
 		}
 	}
 
-	if( S[sigma1].flag )  ln_b_fac1 = -ln_b_fac1;  // |0> -> |1>
-	if( S[sigma2].flag )  ln_b_fac2 = -ln_b_fac2;
+	if( !S[sigma1].wind )  ln_b_fac1 = -ln_b_fac1;  // |0> -> |1>
+	if( !S[sigma2].wind )  ln_b_fac2 = -ln_b_fac2;
 
 	double ln_u = 0;
-	if( S[sigma1].flag == S[sigma2].flag )  ln_u = prm.beta * prm.U[sigma1][sigma2];
-	if( S[sigma1].flag )  ln_u = -ln_u;  // |0> -> |1>
+	if( S[sigma1].wind == S[sigma2].wind )  ln_u = prm.beta * prm.U[sigma1][sigma2];
+	if( !S[sigma1].wind )  ln_u = -ln_u;  // |0> -> |1>
 
 	double prob = exp(ln_b_fac1 + ln_b_fac2 + ln_u);
 
 	unsigned long n_accept_temp=0, n_reject_temp=0;
 
 	if( metropolis_abs(fabs(prob), n_accept_temp, n_reject_temp) ){
-
-		S[sigma1].flag = (S[sigma1].flag + 1)%2;
-		S[sigma2].flag = (S[sigma2].flag + 1)%2;
+		S[sigma1].wind ^= true;
+		S[sigma2].wind ^= true;
 		if(prob<0)  w_sign = -w_sign;
 	}
 }
@@ -1968,10 +1963,10 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 // 	double l_over, l_total;
 // 	double b_fac;  // Boltzmann factor
 	double l_max, l_dif, tau1;
-	int flag_change=0;
+	bool flag_change = false;
 // 	int flag_direction;  // 0: segment shrinks,  1: segment extends
 
-	if( F->flag ){  // flag==1: tau1[i] > tau2[i]
+	if( !F->wind ){  // tau1[i] > tau2[i]
 		l_max = F->tau2[i_tau1+1] - F->tau2[i_tau1];
 		if( prm.UINF ){
 			for(int r=0; r<N_S-1; r++){
@@ -1990,11 +1985,11 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		l_dif = tau1 - F->tau1[i_tau1];
 
 		if( tau1 > prm.beta ){
-			flag_change = 1;
+			flag_change = true;
 			tau1 -= prm.beta;
 		}
 	}
-	else{  // flag==0: tau1[i] < tau2[i]
+	else{  // wind: tau1[i] < tau2[i]
 		int i_tau1m = (i_tau1 - 1 + F->k) % F->k;
 		l_max = F->tau2[i_tau1] - F->tau2[i_tau1m];
 		if(i_tau1==0)  l_max += prm.beta;
@@ -2022,7 +2017,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		l_dif = tau1 - F->tau1[i_tau1];
 
 		if( tau1 < 0 ){
-			flag_change = 1;
+			flag_change = true;
 			tau1 += prm.beta;
 		}
 	}
@@ -2037,7 +2032,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 					ln_b_fac -= l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
-					if(S[s_ref[r]].flag==0){
+					if(S[s_ref[r]].wind){
 						ln_b_fac -= l_dif * prm.U[sigma][s_ref[r]];
 					}
 				}
@@ -2053,7 +2048,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 					ln_b_fac += l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
-					if(S[s_ref[r]].flag==0){
+					if(S[s_ref[r]].wind){
 						ln_b_fac += (-l_dif) * prm.U[sigma][s_ref[r]];
 					}
 				}
@@ -2133,7 +2128,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 
 // 	double prob = lambda * b_fac;
 	double prob = lambda * b_fac * fac_ph;
-	if(flag_change==1)  prob = -prob;
+	if(flag_change)  prob = -prob;
 
 	#if TEST_MODE
 	printf("\nshift_tau1  (sigma=%d)\n", sigma);
@@ -2159,12 +2154,13 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		//
 		// rotate rows
 		//
-		if( flag_change==1 ){
-			if( F->flag ){  // flag==1: tau1[i] > tau2[i],  rotate upward
+		if( flag_change ){
+			// if( F->flag ){  // flag==1: tau1[i] > tau2[i],  rotate upward
+			if( !F->wind ){  // tau1[i] > tau2[i],  rotate upward
 				F->rotate_upward_tau1();
 				F->D.rotate_rows_upward();
 			}
-			else{  // flag==1: tau1[i] > tau2[i],  rotate downward
+			else{  // wind: tau1[i] < tau2[i],  rotate downward
 				F->rotate_downward_tau1();
 				F->D.rotate_rows_downward();
 			}
@@ -2172,7 +2168,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 
 		F->tau1[F->k] = F->tau1[0] + prm.beta;
 
-		F->flag = (F->flag + flag_change)%2;
+		F->wind ^= flag_change;
 		if(prob<0)  w_sign = -w_sign;
 
 		#if TEST_MODE
@@ -2180,7 +2176,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		for(int i=0; i<F->k; i++){
 			printf("%3d  %8.5lf  %8.5lf\n", i, F->tau1[i], F->tau2[i]);
 		}
-		printf("  flag=%d\n", F->flag);
+		printf("  wind=%d\n", F->wind);
 		#endif
 	}
 }
@@ -2205,11 +2201,11 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 // 	double l_over, l_total;
 // 	double b_fac;  // Boltzmann factor
 	double l_max, l_dif, tau2;
-	int flag_change=0;
+	bool flag_change = false;
 // 	int flag_direction;  // 0: segment shrinks,  1: segment extends
 
 
-	if( F->flag ){  // flag==1: tau1[i] > tau2[i]
+	if( !F->wind ){  // tau1[i] > tau2[i]
 		if(i_tau2)  l_max = F->tau1[i_tau2] - F->tau1[i_tau2-1];
 		else  l_max = F->tau1[F->k] - F->tau1[F->k-1];
 		if( prm.UINF ){
@@ -2231,11 +2227,11 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		l_dif = tau2 - F->tau2[i_tau2];
 
 		if( tau2 < 0 ){
-			flag_change = 1;
+			flag_change = true;
 			tau2 += prm.beta;
 		}
 	}
-	else{  // flag==0: tau1[i] < tau2[i]
+	else{  // wind: tau1[i] < tau2[i]
 		l_max = F->tau1[i_tau2+1] - F->tau1[i_tau2];
 		double tau1_temp = F->tau1[i_tau2];
 		if( prm.UINF ){
@@ -2261,7 +2257,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		l_dif = tau2 - F->tau2[i_tau2];
 
 		if( tau2 > prm.beta ){
-			flag_change = 1;
+			flag_change = true;
 			tau2 -= prm.beta;
 		}
 	}
@@ -2277,7 +2273,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 					ln_b_fac -= l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
-					if(S[s_ref[r]].flag==0){
+					if(S[s_ref[r]].wind){
 						ln_b_fac -= (-l_dif) * prm.U[sigma][s_ref[r]];
 					}
 				}
@@ -2293,7 +2289,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 					ln_b_fac += l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
-					if(S[s_ref[r]].flag==0){
+					if(S[s_ref[r]].wind){
 						ln_b_fac += l_dif * prm.U[sigma][s_ref[r]];
 					}
 				}
@@ -2374,7 +2370,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 
 // 	double prob = lambda * b_fac;
 	double prob = lambda * b_fac * fac_ph;
-	if(flag_change==1)  prob = -prob;
+	if(flag_change)  prob = -prob;
 
 	#if TEST_MODE
 	printf("\nshift_tau2  (sigma=%d)\n", sigma);
@@ -2400,12 +2396,12 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		//
 		// rotate columns
 		//
-		if( flag_change==1 ){
-			if( F->flag ){  // flag==1: tau1[i] > tau2[i],  rotate downward
+		if( flag_change ){
+			if( !F->wind ){  // tau1[i] > tau2[i],  rotate downward
 				F->rotate_downward_tau2();
 				F->D.rotate_columns_downward();
 			}
-			else{  // flag==1: tau1[i] > tau2[i],  rotate upward
+			else{  // wind: tau1[i] < tau2[i],  rotate upward
 				F->rotate_upward_tau2();
 				F->D.rotate_columns_upward();
 			}
@@ -2413,7 +2409,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 
 		F->tau2[F->k] = F->tau2[0] + prm.beta;
 
-		F->flag = (F->flag + flag_change)%2;
+		F->wind ^= flag_change;
 		if(prob<0)  w_sign = -w_sign;
 
 		#if TEST_MODE
@@ -2421,7 +2417,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		for(int i=0; i<F->k; i++){
 			printf("%3d  %8.5lf  %8.5lf\n", i, F->tau1[i], F->tau2[i]);
 		}
-		printf("  flag=%d\n", F->flag);
+		printf("  wind=%d\n", F->wind);
 		#endif
 	}
 }

@@ -21,12 +21,11 @@ public:
 
     std::vector<double> tau1;  // for f-annihilation (c-creation) operator
 	std::vector<double> tau2;  // for f-creation (c-annihilation) operator
-	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
+    bool wind;  // true: tau1[i] < tau2[i], false: tau1[i] > tau2[i]
 
     OpDet D;
 
     int k;
-    // int n_k() { return _n_k; };
 
     void insert_tau1(double tau);
     void insert_tau2(double tau);
