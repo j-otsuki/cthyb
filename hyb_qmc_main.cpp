@@ -56,7 +56,7 @@ void InputParams::read_params(string& file_ini)
 {
     boost::property_tree::ptree pt;
 
-	cout << "Reading file '" << file_ini << "'" << endl;
+	cout << "\nRead file '" << file_ini << "'" << endl;
 	cout << boolalpha;  // print bool type as true or false
 	try{
 	    boost::property_tree::read_ini(file_ini, pt);
@@ -176,11 +176,16 @@ vec_vec_d load(const string& file_data, int n_row, int n_col)
 	return data;
 }
 
+void print_size(const vec_vec_d& data)
+{
+	cout << "  (" << data.size() << ", " << data[0].size() << ") loaded." << endl;
+}
+
 vec_d read_ef(const string& file_data, int n_s)
 {
 	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, 1);
-	cout << "  done" << endl;
+	print_size(data);
 
 	vec_d ef(n_s);
 	for(int i=0; i<n_s; i++){
@@ -193,7 +198,7 @@ vec_vec_d read_U(const string& file_data, int n_s)
 {
 	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, n_s);
-	cout << "  done" << endl;
+	print_size(data);
 
 	return data;
 }
@@ -203,7 +208,7 @@ vec_vec_c read_Delta(const string& file_data, int n_s, int n_w)
 	cout << "\nRead file '" << file_data << "'" << endl;
 	// cout << "n_s=" << n_s << " , n_w=" << n_w << endl;
 	vec_vec_d data = load(file_data, n_w, 2*n_s);
-	cout << "  done" << endl;
+	print_size(data);
 
 	vec_vec_c Delta_omega;
 	resize(Delta_omega, n_s, n_w);
@@ -219,7 +224,7 @@ vec_d read_Vsq(const string& file_data, int n_s)
 {
 	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, 1);
-	cout << "  done" << endl;
+	print_size(data);
 
 	vec_d Vsq(n_s);
 	for(int i=0; i<n_s; i++){
@@ -280,12 +285,12 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	int N_S = SP.size();
 	int N_TAU = SP[0].Gf_tau.size() - 1;
 
-	printf("\n f number                   (measured at tau=0)\n");
+	printf("\n Occupation number           (measured at tau=0)\n");
 	for(int s=0; s<N_S; s++){
-		printf("   %d: %lf +- %lf", s, SP[s].f_number, SP[s].f_number_err);
-		printf("   (%lf +- %lf)\n", SP[s].f_number2, SP[s].f_number2_err);
+		printf("    %d: %lf +- %lf", s, SP[s].f_number, SP[s].f_number_err);
+		printf("    (%lf +- %lf)\n", SP[s].f_number2, SP[s].f_number2_err);
 	}
-	printf(" tot: %lf +- %lf\n", PQ.occup_tot, PQ.occup_tot_err);
+	printf("  tot: %lf +- %lf\n", PQ.occup_tot, PQ.occup_tot_err);
 
 	FILE *fp;
 	char filename[128];
@@ -295,7 +300,7 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 		tau[i] = (double)i * prm.beta / (double)N_TAU;
 	}
 
-	sprintf(filename, "Gf_tau.dat");
+	sprintf(filename, "Gf_t.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<=N_TAU; i++){
 		fprintf(fp, "%.4e", tau[i]);
@@ -312,7 +317,7 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
 	}
 
-	sprintf(filename, "Gf_omega.dat");
+	sprintf(filename, "Gf_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
 		fprintf(fp, "%.4e", iw[i]);
@@ -340,7 +345,7 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	// 	}
 
 	// 	for(int s=0; s<N_S; s++){
-	// 		pade_init(i_omega_f, SP[s].Gf_omega.data(), Gf_pade[s], N_PADE);
+	// 		pade_init(i_omega_f, SP[s].Gf_w.data(), Gf_pade[s], N_PADE);
 	// 	}
 
 	// 	sprintf(filename, "Gf_pade.dat");
@@ -366,7 +371,7 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	// }
 
 
-	sprintf(filename, "self_f.dat");
+	sprintf(filename, "self_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
 // 	for(int i=0; i<100; i++){
@@ -394,7 +399,7 @@ void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& T
 	FILE *fp;
 	char filename[128];
 
-	sprintf(filename, "chi_tau.dat");
+	sprintf(filename, "chi_t.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<=N_TP; i++){
 // 		double tau = (double)i * prm.beta / (double)(2*N_TP);
@@ -413,7 +418,7 @@ void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& T
 
 
 
-	sprintf(filename, "chi_omega.dat");
+	sprintf(filename, "chi_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TP2; i++){
 		fprintf(fp, "%d %.5e %.5e\n", i, real(TP_sp.chi_omega[i]), real(TP_ch.chi_omega[i]));
@@ -465,7 +470,7 @@ void print_Delta(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 		fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
 	}
 
-	sprintf(filename, "delta_tau.dat");
+	sprintf(filename, "delta_t.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU; i++){
 		fprintf(fp, "%.4e", tau[i]);
@@ -483,7 +488,7 @@ void print_Delta(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
 	}
 
-	sprintf(filename, "delta_omega.dat");
+	sprintf(filename, "delta_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
 		fprintf(fp, "%.4e", iw[i]);
@@ -520,13 +525,16 @@ int main(int argc, char* argv[])
 			exit(1);
 	}
 
+	cout << "HYBQMC start" << endl;
+	clock_t time_start = clock();
+
 	// Input parameters
 	InputParams in;
 	in.read_params(file_ini);
 	in.summary();
 
 	// Initialize QMC worker
-	HybQMC Q(in.max_order, in.n_s, in.n_tau, in.n_tp, in.n_tp2, in.rand_seed);
+	HybQMC MC(in.max_order, in.n_s, in.n_tau, in.n_tp, in.n_tp2, in.rand_seed);
 
 	// Set MC parameters
 	num_mc n_mc;
@@ -537,14 +545,14 @@ int main(int argc, char* argv[])
 	n_mc.N_WARMUP = in.n_warmup;
 	n_mc.R_ADD = in.r_add;
 	n_mc.R_SHIFT = in.r_shift;
-	Q.set_nmc(n_mc);
+	MC.set_nmc(n_mc);
 
 	// Set parameters
 	hyb_qmc_params prm;
 	prm.beta = in.beta;
 	prm.ef = read_ef(in.file_ef, in.n_s);
 	prm.U = read_U(in.file_U, in.n_s);
-	Q.set_params(prm);
+	MC.set_params(prm);
 
 	// Read and set Delta(iw)
 	vec_vec_c Delta_omega = read_Delta(in.file_Delta, in.n_s, in.n_tau/2);
@@ -552,20 +560,19 @@ int main(int argc, char* argv[])
 	if(my_rank==0){
 		print_Delta(prm, Delta_omega, Vsq);
 	}
-	Q.set_Delta(Delta_omega, Vsq);
+	MC.set_Delta(Delta_omega, Vsq);
 
 	// QMC calc
-	clock_t time_start = clock();
 	int flag_tp = in.flag_tp;
-	Q.eval(flag_tp);
+	MC.eval(flag_tp);
 
 	// Get results
-	t_sp SP = Q.get_SP();
-	t_tp TP = Q.get_TP();
-	vec_d TP_tau = Q.get_TP_tau();
-	two_particle TP_sp = Q.get_TP_sp();
-	two_particle TP_ch = Q.get_TP_ch();
-	phys_quant PQ = Q.get_PQ();
+	t_sp SP = MC.get_SP();
+	t_tp TP = MC.get_TP();
+	vec_d TP_tau = MC.get_TP_tau();
+	two_particle TP_sp = MC.get_TP_sp();
+	two_particle TP_ch = MC.get_TP_ch();
+	phys_quant PQ = MC.get_PQ();
 
 	// Output results
 	if(my_rank==0){
@@ -578,8 +585,10 @@ int main(int argc, char* argv[])
 		}
 
 		clock_t time_end = clock();
-		print_time(time_start, time_end);
-	// 	print_time(time_start, time_end, LOG_FILE);
+		cout << "\nHYBQMC finish" << endl;
+		char str[100];
+		sprint_time(str, time_end - time_start);
+		printf("  time:%s", str);
 	}
 
 	#if HYB_QMC_MPI

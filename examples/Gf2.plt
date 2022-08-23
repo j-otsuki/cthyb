@@ -9,29 +9,29 @@ set style line 4 lt 4 lw 2 pt 4 ps 1.5
 
 
 set terminal postscript eps color enhanced "Times-Roman" 24
-set output "Gf_tau.eps"
+set output "Gf_t.eps"
 set xlabel "{/Symbol t}"
-set ylabel "{/Times-Italic G_f}({/Symbol t})"
+set ylabel "{/Times-Italic G}_{imp}({/Symbol t})"
 set xrange[0:*]
 set yrange[:0]
 
-plot "Gf_tau.dat"u 1:2:3 title"0" w ye ls 1\
+plot "Gf_t.dat"u 1:2:3 title"0" w ye ls 1\
 , ""u 1:4:5 title"1" w ye ls 2\
 
 set output
 
 
 set terminal postscript eps color enhanced "Times-Roman" 24
-set output "Gf_omega.eps"
-set xlabel "{/Times-Italic n}"
-set ylabel "{/Times-Italic G_f}(i{/Symbol e}_{/Times-Italic n})"
+set output "Gf_w.eps"
+set xlabel "{/Symbol e}_{/Times-Italic n}"
+set ylabel "{/Times-Italic G}_{imp}(i{/Symbol e}_{/Times-Italic n})"
 set xrange[0:10]
 set yrange[*:*]
 
 set key bottom
 
-plot "Gf_omega.dat"u 1:2 title"0 real" ls 1, ""u 1:3 title"0 imag" ls 2\
-, ""u 1:4 title"1 real" ls 3, ""u 1:5 title"1 imag" ls 4\
+plot "Gf_w.dat"u 1:2 title"0 Re" ls 1, ""u 1:3 title"0 Im" ls 2\
+, ""u 1:4 title"1 Re" ls 3, ""u 1:5 title"1 Im" ls 4\
 
 set output
 
@@ -39,7 +39,7 @@ set output
 # set terminal postscript eps color enhanced "Times-Roman" 24
 # set output "Gf_pade.eps"
 # set xlabel "{/Symbol w}"
-# set ylabel "\261Im{/Times-Italic G_f}({/Symbol w})"
+# set ylabel "\261Im{/Times-Italic G}_{imp}({/Symbol w})"
 # set xrange[-1.5:1.5]
 # set yrange[0:*]
 
@@ -53,15 +53,15 @@ set output
 
 
 set terminal postscript eps color enhanced "Times-Roman" 24
-set output "self_f.eps"
-set xlabel "{/Times-Italic n}"
-set ylabel "{/Symbol S}_{/Times-Italic f}(i{/Symbol e}_{/Times-Italic n})"
+set output "self_w.eps"
+set xlabel "{/Symbol e}_{/Times-Italic n}"
+set ylabel "{/Symbol S}_{imp}(i{/Symbol e}_{/Times-Italic n})"
 set xrange[0:10]
 set yrange[*:*]
 
 set key bottom
 
-plot "self_f.dat"u 1:2 title"0 real" ls 1, ""u 1:3 title"0 imag" ls 2\
-, ""u 1:4 title"1 real" ls 3, ""u 1:5 title"1 imag" ls 4\
+plot "self_w.dat"u 1:2 title"0 Re" ls 1, ""u 1:3 title"0 Im" ls 2\
+, ""u 1:4 title"1 Re" ls 3, ""u 1:5 title"1 Im" ls 4\
 
 set output

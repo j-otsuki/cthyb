@@ -8,8 +8,6 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 */
 
-static const char tag[64] = "v2.06";
-
 #include <stdio.h>
 #include <iostream>
 #include "hyb_qmc.h"
@@ -167,12 +165,9 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	#endif // HYB_QMC_MPI
 
 	if(my_rank==0){
-		printf("\nHYBQMC_INIT  %s\n", tag);
+		printf("\nHybQMC::HybQMC\n");
 		printf(" N_S = %d\n", N_S);
 		printf(" (N_TAU, N_TP, N_TP2) = (%d, %d, %d)\n", N_TAU, N_TP, N_TP2);
-		// printf(" N_WARMUP = %d\n", N_WARMUP);
-		// printf(" PHONON = %d\n", PHONON);
-		// printf(" CHI_TR = %d\n", CHI_TR);
 		printf(" seed = %ld\n", seed);
 		printf(" MAX_R_CORR = %d\n", MAX_R_CORR);
 		printf(" K_TOT_MIN = %d\n", K_TOT_MIN);
@@ -260,7 +255,7 @@ HybQMC::~HybQMC()
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHYBQMC_FINAL\n");
+		printf("\nHybQMC::~HybQMC\n");
 	}
 
 // 	#if HYB_QMC_MPI
@@ -278,7 +273,7 @@ void HybQMC::set_nmc(const num_mc& n_mc_in)
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHYBQMC_SET_NUM_MC\n");
+		printf("\nHybQMC::set_nmc\n");
 	}
 
 	n_mc = n_mc_in;
@@ -292,7 +287,7 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHYBQMC_SET_PARAMS\n");
+		printf("\nHybQMC::set_params\n");
 	}
 
 	prm = prm_in;
@@ -333,7 +328,7 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHYBQMC_SET_DELTA\n");
+		printf("\nHybQMC::set_Delta\n");
 	}
 
 	Delta_omega = Delta_omega_in;  // copy
@@ -369,7 +364,7 @@ void HybQMC::set_moment(const vec_d& moment_f_in)
 	ave /= double(N_S);
 	curie /= double(N_S);
 	if(my_rank==0){
-		printf("\nHYBQMC_SET_MOMENT\n");
+		printf("\nHybQMC::set_moment\n");
 		printf(" ave = %.5lf\n", ave);
 		printf(" Curie const = %.5lf\n", curie);
 	}
@@ -379,11 +374,11 @@ void HybQMC::eval(bool flag_tp)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
-		fprintf(fp_log, "\nEVAL_MC\n");
+		fprintf(fp_log, "\nEVAL\n");
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHYBQMC_EVAL\n");
+		printf("\nHybQMC::eval\n");
 	}
 	time_t time_start = clock();
 
@@ -412,10 +407,11 @@ void HybQMC::eval(bool flag_tp)
 	sampling(i_measure, n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
 
 	if(my_rank==0){
+		printf("\nFinish eval\n");
 		time_t time_end = clock();
 		char str[100];
 		sprint_time(str, time_end - time_start);
-		printf("\n time:%s", str);
+		printf("  time:%s", str);
 	}
 }
 
