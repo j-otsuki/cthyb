@@ -13,9 +13,6 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 // #include <gsl/gsl_integration.h>
 #include <gsl/gsl_spline.h>
 #include <complex>
-// #include "ct_qmc_share.h"
-// N_TAU
-// EQUAL_TIME_G
 
 struct green_func_0{
 	int N;  // N_TAU
@@ -50,8 +47,8 @@ struct boson_func_0{
 void G0_alloc(struct green_func_0 &G0, int N);
 void G0_free(struct green_func_0 &G0);
 
-void G0_init_integ(struct green_func_0 &G0, double beta, double D);
-void G0_init_integ(struct green_func_0 &G0, double beta, double D, double V_sqr);
+// void G0_init_integ(struct green_func_0 &G0, double beta, double D);
+// void G0_init_integ(struct green_func_0 &G0, double beta, double D, double V_sqr);
 
 void G0_init(struct green_func_0 &G0, double *G_tau, double beta);
 
