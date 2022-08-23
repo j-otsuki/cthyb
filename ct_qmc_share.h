@@ -61,9 +61,9 @@ double distrib_fermi(double x);
 double distrib_fermi_boltz(double x, double y);
 
 
-int tau_order(double *, int, double);
-int tau_order(std::vector<double>&, double);
-int tau_position(double *, int, double);
+int tau_order(const double *, int, double);
+int tau_order(const std::vector<double>&, double);
+int tau_position(const double *, int, double);
 
 
 //

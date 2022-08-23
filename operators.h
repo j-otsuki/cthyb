@@ -21,12 +21,11 @@ public:
 
     std::vector<double> tau1;  // for f-annihilation (c-creation) operator
 	std::vector<double> tau2;  // for f-creation (c-annihilation) operator
-	int flag;  // 0: tau1[i] < tau2[i],  1: tau1[i] > tau2[i]
+    bool wind;  // true: tau1[i] < tau2[i], false: tau1[i] > tau2[i]
 
     OpDet D;
 
     int k;
-    // int n_k() { return _n_k; };
 
     void insert_tau1(double tau);
     void insert_tau2(double tau);
@@ -34,7 +33,12 @@ public:
     void remove_tau1(int);
     void remove_tau2(int);
 
-    double length();
+    bool is_occupied(double tau) const;
+
+    // beta must be set before length() or overlap() are called.
+    void set_beta(double beta){ this->beta=beta; }
+    double length() const;
+    double overlap(double tau_from, double tau_to) const;
 
     //rotate
     void rotate_upward_tau1();
@@ -45,6 +49,7 @@ public:
 private:
     // int _n_k;  // number of segments
     int max_k;
+    double beta;
 };
 
 

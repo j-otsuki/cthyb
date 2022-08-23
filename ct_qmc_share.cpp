@@ -73,7 +73,7 @@ double distrib_fermi_boltz(double x, double y)
 
 
 
-int tau_order(double *tau_array, int k, double tau)
+int tau_order(const double *tau_array, int k, double tau)
 {
 	int i;
 
@@ -83,11 +83,11 @@ int tau_order(double *tau_array, int k, double tau)
 
 	return(i);
 }
-int tau_order(std::vector<double>& array, double tau){
+int tau_order(const std::vector<double>& array, double tau){
 	return tau_order(array.data(), array.size(), tau);
 }
 
-int tau_order(int *num_array, int k, int num)
+int tau_order(const int *num_array, int k, int num)
 {
 	int i;
 
@@ -98,7 +98,7 @@ int tau_order(int *num_array, int k, int num)
 	return(i);
 }
 
-int tau_position(double *tau_array, int k, double tau)
+int tau_position(const double *tau_array, int k, double tau)
 {
 	for(int i=0; i<k; i++){
 		if(tau_array[i] == tau)  return(i);
