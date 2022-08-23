@@ -34,9 +34,12 @@ public:
     void remove_tau1(int);
     void remove_tau2(int);
 
-    double length();
-
     bool is_occupied(double tau) const;
+
+    // beta must be set before length() or overlap() are called.
+    void set_beta(double beta){ this->beta=beta; }
+    double length() const;
+    double overlap(double tau_from, double tau_to) const;
 
     //rotate
     void rotate_upward_tau1();
@@ -47,6 +50,7 @@ public:
 private:
     // int _n_k;  // number of segments
     int max_k;
+    double beta;
 };
 
 

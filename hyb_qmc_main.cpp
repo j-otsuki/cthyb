@@ -377,12 +377,39 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 // 	for(int i=0; i<100; i++){
 		fprintf(fp, "%.4e", iw[i]);
 		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e %.6e", real(SP[s].self_omega[i]), imag(SP[s].self_omega[i]));
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+
+
+	sprintf(filename, "self_w_dyson.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_TAU/2; i++){
+// 	for(int i=0; i<100; i++){
+		fprintf(fp, "%.4e", iw[i]);
+		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", real(SP[s].self_omega_dyson[i]), imag(SP[s].self_omega_dyson[i]));
 		}
 		fprintf(fp, "\n");
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
+
+
+	sprintf(filename, "GSigma_t.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<=N_TAU; i++){
+		fprintf(fp, "%.4e", tau[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e %.6e", SP[s].GSigma_tau[i], SP[s].GSigma_tau_err[i]);
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf("\n '%s'\n", filename);
 }
 
 

@@ -29,12 +29,7 @@ static struct mc_accept_sub{
 
 static FILE *fp_log;
 
-
 static int my_rank=0, process_num=1;
-
-
-static double tau_length(Operators &F, double);
-static double tau_overlap(double, double, Operators &, double);
 
 
 //============================================================================
@@ -322,6 +317,8 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 	// TODO: check size of U matrix
 	// TODO: check if diagonals are zero
 	// TODO: check if U matrix is symmetric
+
+	for(int i=0; i<N_S; i++)  S[i].set_beta(prm.beta);
 
 	#if PHONON
 	for(int s1=0; s1<N_S; s1++){
@@ -754,9 +751,7 @@ inline void HybQMC::measure_sp()
 	}
 
 	for(int s=0; s<N_S; s++){
-		// double len = tau_length(S[s]);
-		// double len = S[s].length();
-		double len = tau_length(S[s], prm.beta);
+		double len = S[s].length();
 		B.f_number[s] += len * (double)w_sign;
 		B.occup_tot += len * (double)w_sign;
 		B.occup_mom += len * moment_f[s] * (double)w_sign;
@@ -1048,7 +1043,7 @@ inline void HybQMC::averagebin_sp(int n_sample)
 		double g_beta = 1.5 * B_TOT.GSigma[s][N_TAU-1] - 0.5 * B_TOT.GSigma[s][N_TAU-2];
 
 		for(int i=N_TAU-1; i>0; i--){
-			B_TOT.GSigma[s][i] = (B_TOT.Gf[s][i] + B_TOT.Gf[s][i-1]) * 0.5;
+			B_TOT.GSigma[s][i] = (B_TOT.GSigma[s][i] + B_TOT.GSigma[s][i-1]) * 0.5;
 		}
 
 		B_TOT.GSigma[s][0] = g_0;
@@ -1639,8 +1634,7 @@ void HybQMC::add_seg(int sigma, int anti)
 		double ln_b_fac = - l_seg * prm.ef[sigma];
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
-// 				double l_over = tau_overlap(tau2, tau1, S[s_ref[r]]);
-				double l_over = tau_overlap(tau_r, tau_l, S[s_ref[r]], prm.beta);
+				double l_over = S[s_ref[r]].overlap(tau_r, tau_l);
 				ln_b_fac -= l_over * prm.U[sigma][s_ref[r]];
 			}
 		}
@@ -1774,7 +1768,7 @@ void HybQMC::rem_seg(int sigma, int anti)
 // 			printf("     tau_r=%lf\n", (*F_tau_r)[i_tau_r]);
 // 			printf("     tau_l=%lf\n", (*F_tau_l)[i_tau_l]);
 			for(int r=0; r<N_S-1; r++){
-				double l_over = tau_overlap((*F_tau_r)[i_tau_r], (*F_tau_l)[i_tau_l], S[s_ref[r]], prm.beta);
+				double l_over = S[s_ref[r]].overlap((*F_tau_r)[i_tau_r], (*F_tau_l)[i_tau_l]);
 // 				printf("     sigma=%d  l_over=%lf\n", s_ref[r], l_over);
 				if( l_over )  return;
 			}
@@ -1787,8 +1781,7 @@ void HybQMC::rem_seg(int sigma, int anti)
 		double ln_b_fac = l_seg * prm.ef[sigma];
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
-// 				double l_over = tau_overlap(F->tau2[i_tau2], F->tau1[i_tau1], S[s_ref[r]]);
-				double l_over = tau_overlap((*F_tau_r)[i_tau_r], (*F_tau_l)[i_tau_l], S[s_ref[r]], prm.beta);
+				double l_over = S[s_ref[r]].overlap((*F_tau_r)[i_tau_r], (*F_tau_l)[i_tau_l]);
 				ln_b_fac += l_over * prm.U[sigma][s_ref[r]];
 			}
 		}
@@ -1872,7 +1865,7 @@ void HybQMC::state0_change(int sigma)
 	}
 	else{
 		for(int r=0; r<N_S-1; r++){
-			ln_b_fac += tau_length(S[s_ref[r]], prm.beta) * prm.U[sigma][s_ref[r]];
+			ln_b_fac += S[s_ref[r]].length() * prm.U[sigma][s_ref[r]];
 		}
 	}
 
@@ -1930,9 +1923,9 @@ void HybQMC::state0_change_2(int sigma1, int sigma2)
 	}
 	else{
 		for(int r=0; r<N_S-2; r++){
-			double l = tau_length(S[s_ref[r]], prm.beta);
-			ln_b_fac1 += tau_length(S[s_ref[r]], prm.beta) * prm.U[sigma1][s_ref[r]];
-			ln_b_fac2 += tau_length(S[s_ref[r]], prm.beta) * prm.U[sigma2][s_ref[r]];
+			double l = S[s_ref[r]].length();
+			ln_b_fac1 += S[s_ref[r]].length() * prm.U[sigma1][s_ref[r]];
+			ln_b_fac2 += S[s_ref[r]].length() * prm.U[sigma2][s_ref[r]];
 		}
 	}
 
@@ -2040,7 +2033,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
 				if(S[s_ref[r]].k){
-					double l_over = tau_overlap(F->tau1[i_tau1], tau1, S[s_ref[r]], prm.beta);
+					double l_over = S[s_ref[r]].overlap(F->tau1[i_tau1], tau1);
 					ln_b_fac -= l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
@@ -2056,7 +2049,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
 				if(S[s_ref[r]].k){
-					double l_over = tau_overlap(tau1, F->tau1[i_tau1], S[s_ref[r]], prm.beta);
+					double l_over = S[s_ref[r]].overlap(tau1, F->tau1[i_tau1]);
 					ln_b_fac += l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
@@ -2280,7 +2273,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
 				if(S[s_ref[r]].k){
-					double l_over = tau_overlap(tau2, F->tau2[i_tau2], S[s_ref[r]], prm.beta);
+					double l_over = S[s_ref[r]].overlap(tau2, F->tau2[i_tau2]);
 					ln_b_fac -= l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
@@ -2296,7 +2289,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		if( prm.UINF==0 ){
 			for(int r=0; r<N_S-1; r++){
 				if(S[s_ref[r]].k){
-					double l_over = tau_overlap(F->tau2[i_tau2], tau2, S[s_ref[r]], prm.beta);
+					double l_over = S[s_ref[r]].overlap(F->tau2[i_tau2], tau2);
 					ln_b_fac += l_over * prm.U[sigma][s_ref[r]];
 				}
 				else{
@@ -2431,161 +2424,6 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 		printf("  flag=%d\n", F->flag);
 		#endif
 	}
-}
-
-
-// This function works for all values of k including k=0
-static double tau_length(Operators &F, double beta)
-{
-	double l=0;
-
-	for(int i=0; i<F.k; i++){
-		l += F.tau1[i] - F.tau2[i];
-	}
-	if(F.flag==0)  l += beta;
-
-	return(l);
-}
-
-// static int tau_overlap(double tau_from, double tau_to, Operators &F, double *l_over, double *l_total)
-static double tau_overlap(double tau_from, double tau_to, Operators &F, double beta)
-{
-	if( F.k == 0 ){
-		double l_over = 0;
-		if( F.flag == 0 ){  // |1>
-			l_over = tau_to - tau_from;
-			if( l_over < 0 )  l_over += beta;
-		}
-		return l_over;
-	}
-
-	// double *tau1, *tau2;
-	std::vector<double> *tau1, *tau2;
-	double *l1, *l2, l_comp, l_over, l_total;
-	int n=0;
-
-	if(F.flag){
-		tau1 = &F.tau1;
-		tau2 = &F.tau2;
-		l1 = &l_over;
-		l2 = &l_comp;
-	}
-	else{
-		tau1 = &F.tau2;
-		tau2 = &F.tau1;
-		l1 = &l_comp;
-		l2 = &l_over;
-	}
-
-	*l1 = 0;
-
-	// int i_from=tau_order(tau2, F.k, tau_from);
-	int i_from=tau_order(*tau2, tau_from);
-	// int i_to=tau_order(tau2, F.k, tau_to);
-	int i_to=tau_order(*tau2, tau_to);
-
-	#if TEST_MODE==2
-	printf("\ntau_overlap\n");
-	printf("  i_from=%d, i_to=%d\n", i_from, i_to);
-	#endif
-
-	if(tau_from < tau_to){
-
-		for(int i=i_from; i<i_to; i++){
-			*l1 += (*tau1)[i] - (*tau2)[i];
-			n += 2;
-
-			#if TEST_MODE==2
-			printf(" (*tau1)[%d]-tau2[%d]=%.5lf\n", i, i, (*tau1)[i] - tau2[i]);
-			#endif
-		}
-
-		if(i_from){  // !=0
-			double under_estim = (*tau1)[i_from-1] - tau_from;
-			if( under_estim > 0 ){
-				*l1 += under_estim;
-				n += 1;
-
-				#if TEST_MODE==2
-				printf(" under_estim=%.5lf\n", under_estim);
-				#endif
-			}
-		}
-
-		if(i_to){  // !=0
-			double over_estim = (*tau1)[i_to-1] - tau_to;
-			if( over_estim > 0 ){
-				*l1 -= over_estim;
-				n -= 1;
-
-				#if TEST_MODE==2
-				printf(" over_estim=%.5lf\n", over_estim);
-				#endif
-			}
-		}
-
-// 		if(F.flag==0)  *l1 = tau_to - tau_from - *l1;
-		l_total = tau_to - tau_from;
-		*l2 = l_total - *l1;
-	}
-	else{
-
-		for(int i=i_from; i<F.k; i++){
-			*l1 += (*tau1)[i] - (*tau2)[i];
-			n += 2;
-
-			#if TEST_MODE==2
-			printf(" tau1[%d]-tau2[%d]=%.5lf\n", i, i, (*tau1)[i] - (*tau2)[i]);
-			#endif
-		}
-
-		if(i_from){  // !=0
-			double under_estim = (*tau1)[i_from-1] - tau_from;
-			if( under_estim > 0 ){
-				*l1 += under_estim;
-				n += 1;
-
-				#if TEST_MODE==2
-				printf(" under_estim=%.5lf\n", under_estim);
-				#endif
-			}
-		}
-
-		for(int i=0; i<i_to; i++){
-			*l1 += (*tau1)[i] - (*tau2)[i];
-			n += 2;
-
-			#if TEST_MODE==2
-			printf(" (*tau1)[%d]-(*tau2)[%d]=%.5lf\n", i, i, (*tau1)[i] - (*tau2)[i]);
-			#endif
-		}
-
-		if(i_to){  // !=0
-			double over_estim = (*tau1)[i_to-1] - tau_to;
-			if( over_estim > 0 ){
-				*l1 -= over_estim;
-				n -= 1;
-
-				#if TEST_MODE==2
-				printf(" over_estim=%.5lf\n", over_estim);
-				#endif
-			}
-		}
-
-// 		if(F.flag==0)  *l1 = beta + tau_to - tau_from - *l1;
-		l_total = beta + tau_to - tau_from;
-		*l2 = l_total - *l1;
-	}
-
-	#if TEST_MODE==2
-	printf("  l_overlap=%.5lf  l_total=%.5lf\n", l_over, l_total);
-// 	if(F.flag)  printf("  l_overlap=%.5lf  l_total=%.5lf\n", *l1, *l_total);
-// 	else  printf("  l_overlap=%.5lf  l_total=%.5lf\n", *l2, *l_total);
-	printf("  n_overlap=%d\n", n);
-	#endif
-
-// 	return(n);
-	return( l_over );
 }
 
 //============================================================================

@@ -65,3 +65,33 @@ plot "self_w.dat"u 1:2 title"0 Re" ls 1, ""u 1:3 title"0 Im" ls 2\
 , ""u 1:4 title"1 Re" ls 3, ""u 1:5 title"1 Im" ls 4\
 
 set output
+
+
+
+set terminal postscript eps color enhanced "Times-Roman" 24
+set output "self_w_dyson.eps"
+set xlabel "{/Symbol e}_{/Times-Italic n}"
+set ylabel "{/Symbol S}_{imp}(i{/Symbol e}_{/Times-Italic n})"
+set xrange[0:10]
+set yrange[*:*]
+
+set key bottom
+
+plot "self_w_dyson.dat"u 1:2 title"0 Re" ls 1, ""u 1:3 title"0 Im" ls 2\
+, ""u 1:4 title"1 Re" ls 3, ""u 1:5 title"1 Im" ls 4\
+
+set output
+
+
+
+set terminal postscript eps color enhanced "Times-Roman" 24
+set output "GSigma_t.eps"
+set xlabel "{/Symbol t}"
+set ylabel "({/Times-Italic G}{/Symbol S})({/Symbol t})"
+set xrange[0:*]
+set yrange[:0]
+
+plot "GSigma_t.dat"u 1:2:3 title"0" w ye ls 1\
+, ""u 1:4:5 title"1" w ye ls 2\
+
+set output
