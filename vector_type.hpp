@@ -49,7 +49,7 @@ void resize(std::vector<std::vector<T> > &x, std::size_t n1, std::size_t n2)
 }
 
 template<class T>
-void resize(std::vector<std::vector<T> > &x, std::size_t n1, std::size_t n2, std::size_t n3)
+void resize(std::vector<std::vector<std::vector<T> > > &x, std::size_t n1, std::size_t n2, std::size_t n3)
 {
     x.resize(n1);
     for (auto& x1 : x) {
@@ -64,6 +64,36 @@ void resize(std::vector<std::vector<T> > &x, std::size_t n1, std::size_t n2, std
     //         x[i][j].resize(n3);
     //     }
     // }
+}
+
+
+template<class T>
+bool check_size(const std::vector<T> &x, std::size_t n1)
+{
+    return x.size() == n1;
+}
+
+template<class T>
+bool check_size(const std::vector<std::vector<T> > &x, std::size_t n1, std::size_t n2)
+{
+    bool r = (x.size() == n1);
+    for (auto& x1 : x) {
+        r &= (x1.size() == n2);
+    }
+    return r;
+}
+
+template<class T>
+bool check_size(const std::vector<std::vector<std::vector<T> > > &x, std::size_t n1, std::size_t n2, std::size_t n3)
+{
+    bool r = (x.size() == n1);
+    for (auto& x1 : x) {
+        r &= (x1.size() == n2);
+        for (auto& x2 : x1) {
+            r &= (x2.size() == n3);
+        }
+    }
+    return r;
 }
 
 #endif // _VECTOR_TYPE_H

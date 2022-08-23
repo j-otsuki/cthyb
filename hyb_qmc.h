@@ -116,9 +116,9 @@ public:
 	void set_params(const hyb_qmc_params& prm_in);
 
 	// setting hybridization function
-	//  V_sqr : integrated value of Delta(w), or iw*Delta(iw) with w->inf
-	void set_Delta(const vec_vec_c& Delta_omega, const vec_d& V_sqr);
-	//  Delta = V_sqr * G0
+	//  V_sq : integrated value of Delta(w), or iw*Delta(iw) with w->inf
+	void set_Delta(const vec_vec_c& Delta_omega, const vec_d& V_sq);
+	//  Delta = V_sq * G0
 
 	// [Optional] setting moment, which is used for susceptibility calculations
 	void set_moment(const vec_d& moment_f_in);

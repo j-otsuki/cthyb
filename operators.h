@@ -52,8 +52,4 @@ private:
     double beta;
 };
 
-
-// int tau_order(std::vector<double>, double);
-
-
 #endif // _OPERATORS_H

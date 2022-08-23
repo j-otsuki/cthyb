@@ -10,6 +10,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 #include <stdio.h>
 #include <iostream>
+#include <cassert>
 #include "hyb_qmc.h"
 // #include "ct_qmc_share.h"
 // #include "matrix_update.h"
@@ -313,11 +314,21 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 		}
 	}
 
-	// TOTO: check size of ef vector
-	// TODO: check size of U matrix
-	// TODO: check if diagonals are zero
-	// TODO: check if U matrix is symmetric
+	// Check size of input
+	assert (check_size(prm.ef, N_S));
+	assert (check_size(prm.U, N_S, N_S));
 
+	// Check if diagonals are zero
+	for(int i=0; i<N_S; i++)  assert(fabs(prm.U[i][i]) < 1e-8);
+
+	// Check if U matrix is symmetric
+	for(int i=0; i<N_S; i++){
+		for(int j=0; j<N_S; j++){
+			assert(fabs(prm.U[i][j] - prm.U[j][i]) < 1e-8);
+		}
+	}
+
+	// set beta for class Operators
 	for(int i=0; i<N_S; i++)  S[i].set_beta(prm.beta);
 
 	#if PHONON
@@ -331,7 +342,7 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 	#endif // PHONON
 }
 
-void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
+void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sq)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
@@ -344,22 +355,24 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
 
 	Delta_omega = Delta_omega_in;  // copy
 
-	// TODO: check size of Delta
+	// Check size of input
+	assert (check_size(Delta_omega, N_S, N_TAU/2));
+	assert (check_size(V_sq, N_S));
 
 	for(int s=0; s<N_S; s++){
-		G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sqr[s]);
+		G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sq[s]);
 	}
 }
-//  Delta = V_sqr * G0
-// void HybQMC::set_G0(complex<double> G0_omega[N_S][N_TAU/2], double V_sqr[N_S])
+//  Delta = V_sq * G0
+// void HybQMC::set_G0(complex<double> G0_omega[N_S][N_TAU/2], double V_sq[N_S])
 // {
 // 	complex<double> (*Delta_omega_in)[N_TAU/2];  // [N_S][N_TAU/2]
 // 	Delta_omega_in = (complex<double>(*)[N_TAU/2])malloc(sizeof(complex<double>)*N_S*N_TAU/2);
 // 	for(int s=0; s<N_S; s++){
-// 		for(int i=0; i<N_TAU/2; i++)  Delta_omega_in[s][i] = G0_omega[s][i] * V_sqr[s];
+// 		for(int i=0; i<N_TAU/2; i++)  Delta_omega_in[s][i] = G0_omega[s][i] * V_sq[s];
 // 	}
 
-// 	hybqmc_set_Delta(Delta_omega_in, V_sqr);
+// 	hybqmc_set_Delta(Delta_omega_in, V_sq);
 
 // 	free(Delta_omega_in);
 // }
@@ -548,7 +561,6 @@ void HybQMC::sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_s
 				}
 			}
 		}
-
 
 		#if HYB_QMC_MPI
 		time_trans_bin = mpi_reduce_bin(i_measure);
@@ -761,26 +773,6 @@ inline void HybQMC::measure_sp()
 	//
 	double delta_tau = prm.beta / (double)N_TAU;
 
-// 	for(int s=0; s<N_S; s++){
-// 		for(int i=0; i<S[s].k; i++){
-// 			for(int j=0; j<S[s].k; j++){
-// 				double tau = S[s].tau1[j] - S[s].tau2[i];
-// 				int i_tau;
-
-// 				if(tau>0){
-// 					i_tau = (int)(tau / delta_tau);
-// 					B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * (double)w_sign;
-// 				}
-// 				else{
-// 					i_tau = (int)((tau + prm.beta) / delta_tau);
-// 					B.Gf[s][i_tau] += S[s].D.mat_M[j][i] * (double)w_sign;
-// 				}
-
-// // 				SP[s].n[i_tau] ++;
-// 			}
-// 		}
-// 	}
-
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<S[s].k; i++){
 			for(int j=0; j<S[s].k; j++){
@@ -939,11 +931,6 @@ void HybQMC::func_measure2()
 	measure_stat();
 	measure_sp();
 	measure_tp();
-
-	#if CHI_TR
-// 	measure_tp_tr1();
-	measure_tp_tr2();
-	#endif // CHI_TR
 }
 
 //============================================================================
@@ -989,7 +976,6 @@ inline void HybQMC::averagebin_stat(int n_sample)
 
 inline void HybQMC::averagebin_sp(int n_sample)
 {
-
 	for(int s=0; s<N_S; s++){
 		B_TOT.f_number[s] /= prm.beta * (double)n_sample;
 
@@ -1300,11 +1286,12 @@ inline void HybQMC::average_sp(int n_bin)
 			average_sub(SP[s].GSigma_tau[i], SP[s].GSigma_tau_err[i], n_bin, PQ.ave_sign);
 		}
 
-		// SP[s].GSigma_tau.back() = 0;  // [N_TAU]
-		// SP[s].GSigma_tau_err.back() = 0;
+		// TODO: from TP
+		// SP[s].GSigma_tau.back() = ;  // [N_TAU]
+		// SP[s].GSigma_tau_err.back() = ;
 
-		// SP[s].GSigma_tau[0] = 0;
-		// SP[s].GSigma_tau_err[0] = 0;
+		// SP[s].GSigma_tau[0] = ;
+		// SP[s].GSigma_tau_err[0] = ;
 
 		double jump = - SP[s].GSigma_tau.front() - SP[s].GSigma_tau.back();
 
@@ -1421,19 +1408,6 @@ double HybQMC::mpi_reduce_bin(int i_measure)
 
 	#if HYB_QMC_MPI
 
-// 	static struct phys_quant_bin{
-// 		long int ave_sign;
-// 		unsigned long n_k[N_S][N_K];
-// 		unsigned long n_ktot[N_S*N_K];
-// 		double Gf[N_S][N_TAU+1];
-// 		double f_number[N_S];
-// 		int f_number_int[N_S];
-// 	// 	double chi_sp[N_TP+1], chi_ch[N_TP+1];
-// 		double chi[N_S][N_S][N_TP+1];
-// 		double chi_tr1[2*N_TP2+1], chi_tr2[2*N_TP2+1];
-// 		complex<double> chi_omega[N_TP_W];
-// 	} *B, *B_TOT;
-
 	MPI_Barrier(MPI_COMM_WORLD);
 	start = MPI_Wtime();
 
@@ -1452,13 +1426,6 @@ double HybQMC::mpi_reduce_bin(int i_measure)
 
 	if( i_measure>1 ){
 		MPI_Reduce(B.chi.data(), B_TOT.chi.data(), B.chi.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-		#if CHI_TR
-		MPI_Reduce(&B->chi_tr1[0], &B_TOT->chi_tr1[0], (2*N_TP2+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&B->chi_tr2[0], &B_TOT->chi_tr2[0], (2*N_TP2+1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-		MPI_Reduce(&B->chi_omega[0], &B_TOT->chi_omega[0], (2*N_TP_W), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif // CHI_TR
 	}
 
 	// if(my_rank==0)  *B = *B_TOT;
