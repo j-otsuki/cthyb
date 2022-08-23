@@ -36,6 +36,8 @@ public:
 
     double length();
 
+    bool is_occupied(double tau) const;
+
     //rotate
     void rotate_upward_tau1();
     void rotate_upward_tau2();

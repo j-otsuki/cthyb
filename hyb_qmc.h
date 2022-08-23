@@ -64,7 +64,9 @@ struct single_particle{
 	double f_number, f_number_err;
 	double f_number2, f_number2_err;
 	double jump;  // coefficient of 1/iw tail; jump=1 for UINF=0, jump<1 for UINF=1
-	vec_c self_f;  // [N_TAU/2]
+	vec_d GSigma_tau, GSigma_tau_err;  // [N_TAU+1]
+	vec_c self_omega_dyson;  // [N_TAU/2] from Dyson equation
+	vec_c self_omega;  // [N_TAU/2] direct measurement
 
 	single_particle() {};
 	single_particle(int n_tau);
@@ -214,10 +216,12 @@ private:
 		long int ave_sign;
 		Array2D<unsigned long> n_k;  // [N_S][N_K]
 		std::vector<unsigned long> n_ktot;  // [N_S*N_K]
-		Array2D<double> Gf;  // [N_S][N_TAU+1]
+		// SP
+		Array2D<double> Gf, GSigma;  // [N_S][N_TAU+1]
 		std::vector<double> f_number;  // [N_S]
 		std::vector<int> f_number_int;  // [N_S]
 		double occup_tot, occup_mom;
+		// TP
 		Array3D<double> chi; // [N_S][N_S][N_TP+1]
 
 		phys_quant_bin() {};

@@ -43,7 +43,10 @@ single_particle::single_particle(int n_tau)
 	: Gf_tau(n_tau+1)
 	, Gf_tau_err(n_tau+1)
 	, Gf_omega(n_tau/2)
-	, self_f(n_tau/2)
+	, GSigma_tau(n_tau+1)
+	, GSigma_tau_err(n_tau+1)
+	, self_omega_dyson(n_tau/2)
+	, self_omega(n_tau/2)
 {}
 
 void single_particle::allzeros()
@@ -51,6 +54,10 @@ void single_particle::allzeros()
 	zeros(Gf_tau);
 	zeros(Gf_tau_err);
 	zeros(Gf_omega);
+	zeros(GSigma_tau);
+	zeros(GSigma_tau_err);
+	zeros(self_omega_dyson);
+	zeros(self_omega);
 
 	f_number = f_number_err = 0;
 	f_number2 = f_number2_err = 0;
@@ -115,6 +122,7 @@ HybQMC::phys_quant_bin::phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp)
 	: n_k(n_s, n_k)
 	, n_ktot(n_s*n_k)
 	, Gf(n_s, n_tau+1)
+	, GSigma(n_s, n_tau+1)
 	, f_number(n_s)
 	, f_number_int(n_s)
 	, chi(n_s, n_s, n_tp+1)
@@ -131,6 +139,7 @@ void HybQMC::phys_quant_bin::allzeros()
 	zeros(n_k);
 	zeros(n_ktot);
 	zeros(Gf);
+	zeros(GSigma);
 	zeros(f_number);
 	zeros(f_number_int);
 	zeros(chi);
@@ -309,6 +318,11 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 		}
 	}
 
+	// TOTO: check size of ef vector
+	// TODO: check size of U matrix
+	// TODO: check if diagonals are zero
+	// TODO: check if U matrix is symmetric
+
 	#if PHONON
 	for(int s1=0; s1<N_S; s1++){
 		prm.ef[s1] += prm.g * prm.g / prm.w_ph;
@@ -333,6 +347,8 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
 
 	Delta_omega = Delta_omega_in;  // copy
 
+	// TODO: check size of Delta
+
 	for(int s=0; s<N_S; s++){
 		G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sqr[s]);
 	}
@@ -354,7 +370,10 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sqr)
 // [Optional]
 void HybQMC::set_moment(const vec_d& moment_f_in)
 {
-	for(int s=0; s<N_S; s++)  moment_f[s] = moment_f_in[s];
+	// for(int s=0; s<N_S; s++)  moment_f[s] = moment_f_in[s];
+	moment_f = moment_f_in;  // copy
+
+	// TODO: check size of moment_f
 
 	double ave = 0, curie = 0;
 	for(int s=0; s<N_S; s++){
@@ -748,22 +767,51 @@ inline void HybQMC::measure_sp()
 	//
 	double delta_tau = prm.beta / (double)N_TAU;
 
+// 	for(int s=0; s<N_S; s++){
+// 		for(int i=0; i<S[s].k; i++){
+// 			for(int j=0; j<S[s].k; j++){
+// 				double tau = S[s].tau1[j] - S[s].tau2[i];
+// 				int i_tau;
+
+// 				if(tau>0){
+// 					i_tau = (int)(tau / delta_tau);
+// 					B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * (double)w_sign;
+// 				}
+// 				else{
+// 					i_tau = (int)((tau + prm.beta) / delta_tau);
+// 					B.Gf[s][i_tau] += S[s].D.mat_M[j][i] * (double)w_sign;
+// 				}
+
+// // 				SP[s].n[i_tau] ++;
+// 			}
+// 		}
+// 	}
+
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<S[s].k; i++){
 			for(int j=0; j<S[s].k; j++){
 				double tau = S[s].tau1[j] - S[s].tau2[i];
-				int i_tau;
 
+				int i_tau;
+				double fac = w_sign;
 				if(tau>0){
-					i_tau = (int)(tau / delta_tau);
-					B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * (double)w_sign;
+					i_tau = int(tau / delta_tau);
 				}
 				else{
-					i_tau = (int)((tau + prm.beta) / delta_tau);
-					B.Gf[s][i_tau] += S[s].D.mat_M[j][i] * (double)w_sign;
+					i_tau = int((tau + prm.beta) / delta_tau);
+					fac = -fac;
 				}
 
-// 				SP[s].n[i_tau] ++;
+				B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * fac;
+
+				// Self-energy
+				for(int s2=0; s2<N_S; s2++){
+					if(s != s2){
+						if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
+							B.GSigma[s][i_tau] -= S[s].D.mat_M[j][i] * prm.U[s][s2] * fac;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -990,6 +1038,29 @@ inline void HybQMC::averagebin_sp(int n_sample)
 		}
 	}
 
+	// Self-energy (direct measurement)
+	for(int s=0; s<N_S; s++){
+		for(int i=0; i<N_TAU; i++){
+			B_TOT.GSigma[s][i] /= prm.beta * delta_tau * (double)n_sample;
+		}
+
+		double g_0 = 1.5 * B_TOT.GSigma[s][0] - 0.5 * B_TOT.GSigma[s][1];
+		double g_beta = 1.5 * B_TOT.GSigma[s][N_TAU-1] - 0.5 * B_TOT.GSigma[s][N_TAU-2];
+
+		for(int i=N_TAU-1; i>0; i--){
+			B_TOT.GSigma[s][i] = (B_TOT.Gf[s][i] + B_TOT.Gf[s][i-1]) * 0.5;
+		}
+
+		B_TOT.GSigma[s][0] = g_0;
+		B_TOT.GSigma[s][N_TAU] = g_beta;
+
+		for(int i=0; i<=N_TAU; i++){
+		// for(int i=1; i<N_TAU; i++){
+			SP[s].GSigma_tau[i] += B_TOT.GSigma[s][i];
+			SP[s].GSigma_tau_err[i] += pow(B_TOT.GSigma[s][i], 2);
+		}
+	}
+
 }
 
 inline void HybQMC::averagebin_tp(int n_sample)
@@ -1211,29 +1282,42 @@ inline void HybQMC::average_sp(int n_bin)
 		}
 	}
 
-	//
-	// fft
-	//
+	// FFT : G(tau) -> G(iw)
 	for(int s=0; s<N_S; s++){
 		fft_fermion_radix2_tau2omega(SP[s].Gf_tau.data(), SP[s].Gf_omega.data(), prm.beta, N_TAU, SP[s].jump);
 	}
 
-	// self-energy
+	// Self-energy (Dyson equation)
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_TAU/2; i++){
 			std::complex<double> i_omega_f = IMAG * (double)(2*i+1) * M_PI / prm.beta;
 
-// 			SP[s].Gf0_omega[i] = 1.0 / (i_omega_f - prm.ef[s] - Delta_omega[i]);
-// 			SP[s].Gf0_omega[i] = 1.0 / (i_omega_f - prm.ef[s] - Delta_omega[i] - prm.U*0.5);
-
-			SP[s].self_f[i] = i_omega_f - prm.ef[s] - Delta_omega[s][i] - 1.0 / SP[s].Gf_omega[i];
-// 			SP[s].self_f[i] = i_omega_f - prm.ef[s] - Delta_omega[i] - prm.U*0.5 - 1.0 / SP[s].Gf_omega[i];
-// 			SP[s].self_f[i] = ((i_omega_f - prm.ef[s] - Delta_omega[i] - prm.U*0.5)*SP[s].Gf_omega[i] - 1.0) / SP[s].Gf_omega[i];
+			SP[s].self_omega_dyson[i] = i_omega_f - prm.ef[s] - Delta_omega[s][i] - 1.0 / SP[s].Gf_omega[i];
 
 			#if PHONON
 			SP[s].self_f[i] += prm.g * prm.g / prm.w_ph;
 			#endif // PHONON
+		}
+	}
 
+	// Self-energy (direct measurement)
+	for(int s=0; s<N_S; s++){
+		for(int i=0; i<=N_TAU; i++){
+			average_sub(SP[s].GSigma_tau[i], SP[s].GSigma_tau_err[i], n_bin, PQ.ave_sign);
+		}
+
+		// SP[s].GSigma_tau.back() = 0;  // [N_TAU]
+		// SP[s].GSigma_tau_err.back() = 0;
+
+		// SP[s].GSigma_tau[0] = 0;
+		// SP[s].GSigma_tau_err[0] = 0;
+
+		double jump = - SP[s].GSigma_tau.front() - SP[s].GSigma_tau.back();
+
+		fft_fermion_radix2_tau2omega(SP[s].GSigma_tau.data(), SP[s].self_omega.data(), prm.beta, N_TAU, jump);
+
+		for(int i=0; i<N_TAU/2; i++){
+			SP[s].self_omega[i] /= SP[s].Gf_omega[i];
 		}
 	}
 
@@ -1365,6 +1449,7 @@ double HybQMC::mpi_reduce_bin(int i_measure)
 
 	if(i_measure>0){
 		MPI_Reduce(B.Gf.data(), B_TOT.Gf.data(), B.Gf.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.GSigma.data(), B_TOT.GSigma.data(), B.Gf.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(B.f_number.data(), B_TOT.f_number.data(), B.f_number.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(B.f_number_int.data(), B_TOT.f_number_int.data(), B.f_number_int.size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(&B.occup_tot, &B_TOT.occup_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);

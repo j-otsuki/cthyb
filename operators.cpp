@@ -54,3 +54,9 @@ void Operators::rotate_downward_tau2()
 {
 	rotate_downward(tau2, k);
 }
+
+bool Operators::is_occupied(double tau) const
+{
+	// TODO
+	return true;
+}
