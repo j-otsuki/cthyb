@@ -1,3 +1,4 @@
+# Build hybqmc executable
 
 set(SOURCES
     hyb_qmc_main.cpp
@@ -12,6 +13,7 @@ set(SOURCES
 )
 add_executable(hybqmc ${SOURCES})
 
+# libraries
 set(LIBS
     ${MPI_C_LIBRARIES}
     ${GSL_LIBRARIES}
@@ -19,6 +21,12 @@ set(LIBS
 )
 target_link_libraries(hybqmc ${LIBS})
 
-target_include_directories(hybqmc PRIVATE ${PROJECT_SOURCE_DIR}/include)
+# includes
+set(INCLUDES
+    ${PROJECT_SOURCE_DIR}/include
+    ${GSL_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+)
+target_include_directories(hybqmc PRIVATE ${INCLUDES})
 
 install(TARGETS hybqmc)
