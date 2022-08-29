@@ -25,7 +25,7 @@ static const char tag[64] = "v1.12";
 
 using namespace std;
 
-int my_rank;
+int my_rank=0;
 
 // ============================================================================
 
@@ -48,16 +48,22 @@ public:
 	double r_add, r_shift;
 
 	// methods
+	InputParams(bool verbose) : verbose(verbose) {};
 	void read_params(string& file_ini);
 	void summary();
+
+private:
+	bool verbose;
 };
 
 void InputParams::read_params(string& file_ini)
 {
     boost::property_tree::ptree pt;
 
-	cout << "\nRead file '" << file_ini << "'" << endl;
-	cout << boolalpha;  // print bool type as true or false
+	if(verbose){
+		cout << "\nRead file '" << file_ini << "'" << endl;
+	}
+
 	try{
 	    boost::property_tree::read_ini(file_ini, pt);
 
@@ -71,11 +77,11 @@ void InputParams::read_params(string& file_ini)
 
 		// [control]
 		n_tau = pt.get<int>("control.n_tau");
-		n_tp = pt.get<int>("control.n_tp");
-		n_tp2 = pt.get<int>("control.n_tp2");
 		rand_seed = pt.get<int>("control.rand_seed", 0);
 		max_order = pt.get<int>("control.max_order", 1024);
 		flag_tp = pt.get<bool>("control.flag_tp", false);
+		n_tp = pt.get<int>("control.n_tp", 32);
+		n_tp2 = pt.get<int>("control.n_tp2", 256);
 
 		// [MC]
 		n_warmup = pt.get<int>("MC.n_warmup", 1000000);
@@ -94,33 +100,36 @@ void InputParams::read_params(string& file_ini)
 
 void InputParams::summary()
 {
-	cout << "\nSummary of input parameters" << endl;
-	cout << "=====================================" << endl;
-	cout << "[model]" << endl;
-	cout << "n_s = " << n_s << endl;
-	cout << "file_Delta = " << file_Delta << endl;
-	cout << "file_Vsq = " << file_Vsq << endl;
-	cout << "file_U = " << file_U << endl;
-	cout << "file_ef = " << file_ef << endl;
-	cout << "beta = " << beta << endl;
+	if(verbose){
+		cout << boolalpha;  // print bool type as true or false
+		cout << "\nSummary of input parameters" << endl;
+		cout << "=====================================" << endl;
+		cout << "[model]" << endl;
+		cout << "n_s = " << n_s << endl;
+		cout << "file_Delta = " << file_Delta << endl;
+		cout << "file_Vsq = " << file_Vsq << endl;
+		cout << "file_U = " << file_U << endl;
+		cout << "file_ef = " << file_ef << endl;
+		cout << "beta = " << beta << endl;
 
-	cout << "\n[control]" << endl;
-	cout << "n_tau = " << n_tau << endl;
-	cout << "n_tp = " << n_tp << endl;
-	cout << "n_tp2 = " << n_tp2 << endl;
-	cout << "rand_seed = " << rand_seed << endl;
-	cout << "max_order = " << max_order << endl;
-	cout << "flag_tp = " << flag_tp << endl;
+		cout << "\n[control]" << endl;
+		cout << "n_tau = " << n_tau << endl;
+		cout << "n_tp = " << n_tp << endl;
+		cout << "n_tp2 = " << n_tp2 << endl;
+		cout << "rand_seed = " << rand_seed << endl;
+		cout << "max_order = " << max_order << endl;
+		cout << "flag_tp = " << flag_tp << endl;
 
-	cout << "\n[MC]" << endl;
-	cout << "n_warmup = " << n_warmup << endl;
-	cout << "n_bin = " << n_bin << endl;
-	cout << "n_msr = " << n_msr << endl;
-	cout << "n_add = " << n_add << endl;
-	cout << "r_add = " << r_add << endl;
-	cout << "n_shift = " << n_shift << endl;
-	cout << "r_shift = " << r_shift << endl;
-	cout << "=====================================" << endl;
+		cout << "\n[MC]" << endl;
+		cout << "n_warmup = " << n_warmup << endl;
+		cout << "n_bin = " << n_bin << endl;
+		cout << "n_msr = " << n_msr << endl;
+		cout << "n_add = " << n_add << endl;
+		cout << "r_add = " << r_add << endl;
+		cout << "n_shift = " << n_shift << endl;
+		cout << "r_shift = " << r_shift << endl;
+		cout << "=====================================" << endl;
+	}
 }
 
 // ============================================================================
@@ -183,9 +192,12 @@ void print_size(const vec_vec_d& data)
 
 vec_d read_ef(const string& file_data, int n_s)
 {
-	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, 1);
-	print_size(data);
+
+	if(my_rank==0){
+		cout << "\nRead file '" << file_data << "'" << endl;
+		print_size(data);
+	}
 
 	vec_d ef(n_s);
 	for(int i=0; i<n_s; i++){
@@ -196,19 +208,24 @@ vec_d read_ef(const string& file_data, int n_s)
 
 vec_vec_d read_U(const string& file_data, int n_s)
 {
-	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, n_s);
-	print_size(data);
+
+	if(my_rank==0){
+		cout << "\nRead file '" << file_data << "'" << endl;
+		print_size(data);
+	}
 
 	return data;
 }
 
 vec_vec_c read_Delta(const string& file_data, int n_s, int n_w)
 {
-	cout << "\nRead file '" << file_data << "'" << endl;
-	// cout << "n_s=" << n_s << " , n_w=" << n_w << endl;
 	vec_vec_d data = load(file_data, n_w, 2*n_s);
-	print_size(data);
+
+	if(my_rank==0){
+		cout << "\nRead file '" << file_data << "'" << endl;
+		print_size(data);
+	}
 
 	vec_vec_c Delta_omega;
 	resize(Delta_omega, n_s, n_w);
@@ -222,9 +239,12 @@ vec_vec_c read_Delta(const string& file_data, int n_s, int n_w)
 
 vec_d read_Vsq(const string& file_data, int n_s)
 {
-	cout << "\nRead file '" << file_data << "'" << endl;
 	vec_vec_d data = load(file_data, n_s, 1);
-	print_size(data);
+
+	if(my_rank==0){
+		cout << "\nRead file '" << file_data << "'" << endl;
+		print_size(data);
+	}
 
 	vec_d Vsq(n_s);
 	for(int i=0; i<n_s; i++){
@@ -552,11 +572,13 @@ int main(int argc, char* argv[])
 			exit(1);
 	}
 
-	cout << "HYBQMC start" << endl;
+	if(my_rank==0){
+		cout << "HYBQMC start" << endl;
+	}
 	clock_t time_start = clock();
 
 	// Input parameters
-	InputParams in;
+	InputParams in(my_rank==0);
 	in.read_params(file_ini);
 	in.summary();
 
