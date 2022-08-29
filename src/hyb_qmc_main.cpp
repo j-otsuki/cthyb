@@ -515,11 +515,12 @@ void print_Delta(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 	resize(delta_tau, N_S, N_TAU+1);
 	for(int s=0; s<N_S; s++){
 		fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
+		delta_tau[s][N_TAU] = - Vsq[s] - delta_tau[s][0];
 	}
 
 	sprintf(filename, "delta_t.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_TAU; i++){
+	for(int i=0; i<=N_TAU; i++){
 		fprintf(fp, "%.4e", tau[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e", delta_tau[s][i]);
