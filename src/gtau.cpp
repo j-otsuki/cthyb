@@ -76,7 +76,7 @@ void GTau::init_giw(const std::vector<complex<double> >& g_iw, double beta, doub
 	vector<double> g_tau;
 	fft_fermion_iw2tau(g_tau, g_iw, beta, a);
 	assert (g_tau.size() == N);
-	g_tau.push_back(-a - g_tau[0]);
+	g_tau.push_back(- a - g_tau[0]);  // [N]
 
 	vector<double> tau(N+1);
 	for(int i=0; i<=N; i++){

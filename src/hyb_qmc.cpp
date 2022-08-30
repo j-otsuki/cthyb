@@ -1285,6 +1285,7 @@ inline void HybQMC::average_sp(int n_bin)
 		temp.pop_back();  // remove [N_TAU]
 		assert (temp.size() == N_TAU);
 		fft_fermion_tau2iw(temp, SP[s].Gf_omega, prm.beta, SP[s].jump);
+		assert (SP[s].Gf_omega.size() == N_TAU/2);
 	}
 
 	// Self-energy (Dyson equation) IF Delta_omega is set
@@ -1322,6 +1323,7 @@ inline void HybQMC::average_sp(int n_bin)
 		temp.pop_back();  // remove [N_TAU]
 		assert (temp.size() == N_TAU);
 		fft_fermion_tau2iw(temp, SP[s].self_omega, prm.beta, jump);
+		assert (SP[s].self_omega.size() == N_TAU/2);
 
 		for(int i=0; i<N_TAU/2; i++){
 			SP[s].self_omega[i] /= SP[s].Gf_omega[i];

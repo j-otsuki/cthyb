@@ -584,6 +584,8 @@ void print_Delta_tau(hyb_qmc_params& prm, vec_vec_d& delta_tau, vec_d& tau)
 	}
 	fclose(fp);
 	printf("\n '%s'\n", filename);
+
+	printf(" Time resolution  : %.2e\n", tau[1] - tau[0]);
 }
 
 
@@ -595,39 +597,18 @@ void print_Delta_iw(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 	FILE *fp;
 	char filename[128];
 
+	double iw[N_TAU/2];
+	for(int i=0; i<N_TAU/2; i++){
+		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
+	}
+
 	double tau[N_TAU+1];
 	for(int i=0; i<=N_TAU; i++){
 		tau[i] = (double)i * prm.beta / (double)N_TAU;
 	}
 
-	vec_vec_d delta_tau;
-	// resize(delta_tau, N_S, N_TAU+1);
-	delta_tau.resize(N_S);
-	for(int s=0; s<N_S; s++){
-		// fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
-		fft_fermion_iw2tau(delta_tau[s], delta_omega[s], prm.beta, Vsq[s]);
-		assert (delta_tau[s].size() == N_TAU);
-		// delta_tau[s][N_TAU] = - Vsq[s] - delta_tau[s][0];
-		delta_tau[s].push_back(- Vsq[s] - delta_tau[s][0]);
-	}
-
-	sprintf(filename, "delta_t.dat");
-	fp=fopen(filename, "w");
-	for(int i=0; i<=N_TAU; i++){
-		fprintf(fp, "%.4e", tau[i]);
-		for(int s=0; s<N_S; s++){
-			fprintf(fp, " %.6e", delta_tau[s][i]);
-		}
-		fprintf(fp, "\n");
-	}
-	fclose(fp);
-	printf("\n '%s'\n", filename);
-
-
-	double iw[N_TAU/2];
-	for(int i=0; i<N_TAU/2; i++){
-		iw[i] = (double)(2*i+1) * M_PI / prm.beta;
-	}
+	printf("\n Frequency cutoff : %.2e\n", iw[N_TAU/2-1]);
+	printf(" Time resolution  : %.2e\n", tau[1] - tau[0]);
 
 	sprintf(filename, "delta_w.dat");
 	fp=fopen(filename, "w");
@@ -641,6 +622,27 @@ void print_Delta_iw(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 	fclose(fp);
 	printf(" '%s'\n", filename);
 
+
+	// FFT: G(iw) -> G(tau)
+	vec_vec_d delta_tau;
+	delta_tau.resize(N_S);
+	for(int s=0; s<N_S; s++){
+		fft_fermion_iw2tau(delta_tau[s], delta_omega[s], prm.beta, Vsq[s]);
+		assert (delta_tau[s].size() == N_TAU);
+		delta_tau[s].push_back(- Vsq[s] - delta_tau[s][0]);  // [N_TAU]
+	}
+
+	sprintf(filename, "delta_t.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<=N_TAU; i++){
+		fprintf(fp, "%.4e", tau[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e", delta_tau[s][i]);
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
 }
 
 // ============================================================================
