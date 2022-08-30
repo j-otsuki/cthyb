@@ -165,7 +165,8 @@ void InputParams::summary()
 // 		}
 // 	}
 // }
-vec_vec_d load(const string& file_data, int n_row, int n_col)
+
+vec_vec_d load(const string& file_data, int n_col)
 {
 	FILE *fp;
 	// if( (fp = fopen(file_data.c_str(), "r")) == NULL ){
@@ -178,14 +179,21 @@ vec_vec_d load(const string& file_data, int n_row, int n_col)
 		MPI_Abort(MPI_COMM_WORLD, 1);
 	}
 
+	// Count the number of rows
+	int n_row=0;
+	double data_line[256];
+	while( read_data(fp, data_line) != 0 ){
+		++n_row;
+	}
+	rewind(fp);
+
 	vec_vec_d data;
 	resize(data, n_row, n_col);
 
-	double data_line[256];
 	for(int i=0; i<n_row; i++){
 		if( read_data(fp, data_line) != n_col ){
 			// printf("ERROR: Invalid file '%s'\n", file_data);
-			cout << "ERROR: Invalid file '" << file_data << "'" << endl;
+			cout << "ERROR: Invalid data structure '" << file_data << "'" << endl;
 			fflush(stdout);
 			MPI_Abort(MPI_COMM_WORLD, 1);
 		}
@@ -202,13 +210,22 @@ void print_size(const vec_vec_d& data)
 	cout << "  (" << data.size() << ", " << data[0].size() << ") loaded." << endl;
 }
 
+void verify_size(const vec_vec_d& data, size_t n_rows, size_t n_cols)
+{
+	if( !check_size(data, n_rows, n_cols) ){
+		cerr << "Invalid data size : Require (" << n_rows << ", " << n_cols << ")" << endl;
+		MPI_Abort(MPI_COMM_WORLD, 1);
+	}
+}
+
 vec_d read_ef(const string& file_data, int n_s)
 {
-	vec_vec_d data = load(file_data, n_s, 1);
+	vec_vec_d data = load(file_data, 1);
 
 	if(my_rank==0){
 		cout << "\nRead file '" << file_data << "'" << endl;
 		print_size(data);
+		verify_size(data, n_s, 1);
 	}
 
 	vec_d ef(n_s);
@@ -220,24 +237,27 @@ vec_d read_ef(const string& file_data, int n_s)
 
 vec_vec_d read_U(const string& file_data, int n_s)
 {
-	vec_vec_d data = load(file_data, n_s, n_s);
+	vec_vec_d data = load(file_data, n_s);
 
 	if(my_rank==0){
 		cout << "\nRead file '" << file_data << "'" << endl;
 		print_size(data);
+		verify_size(data, n_s, n_s);
 	}
 
 	return data;
 }
 
-vec_vec_d read_Delta_tau(const string& file_data, int n_s, int n_t, vec_d& tau)
+vec_vec_d read_Delta_tau(const string& file_data, int n_s, vec_d& tau)
 {
-	vec_vec_d data = load(file_data, n_t+1, n_s+1);
+	vec_vec_d data = load(file_data, n_s+1);
 
 	if(my_rank==0){
 		cout << "\nRead file '" << file_data << "'" << endl;
 		print_size(data);
 	}
+
+	int n_t = data.size() - 1;
 
 	tau.resize(n_t + 1);
 	for(int i=0; i<=n_t; i++){
@@ -254,14 +274,16 @@ vec_vec_d read_Delta_tau(const string& file_data, int n_s, int n_t, vec_d& tau)
 	return Delta_tau;
 }
 
-vec_vec_c read_Delta_iw(const string& file_data, int n_s, int n_w)
+vec_vec_c read_Delta_iw(const string& file_data, int n_s)
 {
-	vec_vec_d data = load(file_data, n_w, 2*n_s);
+	vec_vec_d data = load(file_data, 2*n_s);
 
 	if(my_rank==0){
 		cout << "\nRead file '" << file_data << "'" << endl;
 		print_size(data);
 	}
+
+	int n_w = data.size();
 
 	vec_vec_c Delta_omega;
 	resize(Delta_omega, n_s, n_w);
@@ -275,11 +297,12 @@ vec_vec_c read_Delta_iw(const string& file_data, int n_s, int n_w)
 
 vec_d read_Vsq(const string& file_data, int n_s)
 {
-	vec_vec_d data = load(file_data, n_s, 1);
+	vec_vec_d data = load(file_data, 1);
 
 	if(my_rank==0){
 		cout << "\nRead file '" << file_data << "'" << endl;
 		print_size(data);
+		verify_size(data, n_s, 1);
 	}
 
 	vec_d Vsq(n_s);
@@ -673,7 +696,7 @@ int main(int argc, char* argv[])
 
 	// Read and set Delta(iw)
 	if(!in.file_Delta_iw.empty()){
-		vec_vec_c Delta_omega = read_Delta_iw(in.file_Delta_iw, in.n_s, in.n_tau/2);
+		vec_vec_c Delta_omega = read_Delta_iw(in.file_Delta_iw, in.n_s);
 		vec_d Vsq = read_Vsq(in.file_Vsq, in.n_s);
 		if(my_rank==0){
 			print_Delta_iw(prm, Delta_omega, Vsq);
@@ -683,7 +706,7 @@ int main(int argc, char* argv[])
 	// Read and set Delta(tau)
 	if(!in.file_Delta_tau.empty()){
 		vec_d tau;
-		vec_vec_d Delta_tau = read_Delta_tau(in.file_Delta_tau, in.n_s, in.n_tau, tau);
+		vec_vec_d Delta_tau = read_Delta_tau(in.file_Delta_tau, in.n_s, tau);
 		if(my_rank==0){
 			print_Delta_tau(prm, Delta_tau, tau);
 		}
