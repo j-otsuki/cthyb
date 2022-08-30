@@ -117,8 +117,8 @@ public:
 
 	// setting hybridization function
 	//  V_sq : integrated value of Delta(w), or iw*Delta(iw) with w->inf
-	void set_Delta(const vec_vec_c& Delta_omega, const vec_d& V_sq);
-	//  Delta = V_sq * G0
+	void set_Delta_iw(const vec_vec_c& Delta_omega, const vec_d& V_sq);
+	void set_Delta_tau(const vec_vec_d& Delta_tau, const vec_d& tau);
 
 	// [Optional] setting moment, which is used for susceptibility calculations
 	void set_moment(const vec_d& moment_f_in);

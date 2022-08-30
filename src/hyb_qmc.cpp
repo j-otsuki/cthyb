@@ -342,41 +342,50 @@ void HybQMC::set_params(const hyb_qmc_params& prm_in)
 	#endif // PHONON
 }
 
-void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sq)
+void HybQMC::set_Delta_iw(const vec_vec_c& Delta_omega_in, const vec_d& V_sq)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
-		fprintf(fp_log, "\nSET_DELTA\n");
+		fprintf(fp_log, "\nSET_DELTA_IW\n");
 		fclose(fp_log);
 	}
 	if(my_rank==0){
-		printf("\nHybQMC::set_Delta\n");
+		printf("\nHybQMC::set_Delta_iw\n");
 	}
 
 	Delta_omega = Delta_omega_in;  // copy
 
 	// Check size of input
-	assert (check_size(Delta_omega, N_S, N_TAU/2));
+	assert (Delta_omega.size() == N_S);  // (N_S, n_iw), n_iw is arbitrary
 	assert (check_size(V_sq, N_S));
 
 	for(int s=0; s<N_S; s++){
-		// G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sq[s]);
 		Delta[s].init_giw(Delta_omega[s], prm.beta, V_sq[s]);
 	}
 }
-//  Delta = V_sq * G0
-// void HybQMC::set_G0(complex<double> G0_omega[N_S][N_TAU/2], double V_sq[N_S])
-// {
-// 	complex<double> (*Delta_omega_in)[N_TAU/2];  // [N_S][N_TAU/2]
-// 	Delta_omega_in = (complex<double>(*)[N_TAU/2])malloc(sizeof(complex<double>)*N_S*N_TAU/2);
-// 	for(int s=0; s<N_S; s++){
-// 		for(int i=0; i<N_TAU/2; i++)  Delta_omega_in[s][i] = G0_omega[s][i] * V_sq[s];
-// 	}
 
-// 	hybqmc_set_Delta(Delta_omega_in, V_sq);
+void HybQMC::set_Delta_tau(const vec_vec_d& Delta_tau_in, const vec_d& tau)
+{
+	if(my_rank==0){
+		fp_log=fopen(LOG_FILE, "a");
+		fprintf(fp_log, "\nSET_DELTA_TAU\n");
+		fclose(fp_log);
+	}
+	if(my_rank==0){
+		printf("\nHybQMC::set_Delta_tau\n");
+	}
 
-// 	free(Delta_omega_in);
-// }
+	// Check size of input
+	size_t n_tau = tau.size();
+	assert (check_size(Delta_tau, N_S, n_tau));
+
+	assert (fabs(tau.front()) < 1e-8);  // tau[0] = 0
+	assert (fabs(tau.back() - prm.beta) < 1e-8);  // tau[N] = beta
+
+	for(int s=0; s<N_S; s++){
+		Delta[s].init_gtau(Delta_tau_in[s], tau);
+	}
+}
 
 // [Optional]
 void HybQMC::set_moment(const vec_d& moment_f_in)
@@ -1268,16 +1277,18 @@ inline void HybQMC::average_sp(int n_bin)
 		fft_fermion_radix2_tau2omega(SP[s].Gf_tau.data(), SP[s].Gf_omega.data(), prm.beta, N_TAU, SP[s].jump);
 	}
 
-	// Self-energy (Dyson equation)
-	for(int s=0; s<N_S; s++){
-		for(int i=0; i<N_TAU/2; i++){
-			std::complex<double> i_omega_f = IMAG * (double)(2*i+1) * M_PI / prm.beta;
+	// Self-energy (Dyson equation) IF Delta_omega is set
+	if( check_size(Delta_omega, N_S, N_TAU/2) ){
+		for(int s=0; s<N_S; s++){
+			for(int i=0; i<N_TAU/2; i++){
+				std::complex<double> i_omega_f = IMAG * (double)(2*i+1) * M_PI / prm.beta;
 
-			SP[s].self_omega_dyson[i] = i_omega_f - prm.ef[s] - Delta_omega[s][i] - 1.0 / SP[s].Gf_omega[i];
+				SP[s].self_omega_dyson[i] = i_omega_f - prm.ef[s] - Delta_omega[s][i] - 1.0 / SP[s].Gf_omega[i];
 
-			#if PHONON
-			SP[s].self_f[i] += prm.g * prm.g / prm.w_ph;
-			#endif // PHONON
+				#if PHONON
+				SP[s].self_f[i] += prm.g * prm.g / prm.w_ph;
+				#endif // PHONON
+			}
 		}
 	}
 

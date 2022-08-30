@@ -19,11 +19,11 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 class GTau{
 public:
 	// N+1
-	void init_gtau(std::vector<double>& g_tau, std::vector<double>& tau);
+	void init_gtau(const std::vector<double>& g_tau, const std::vector<double>& tau);
 
 	// N/2
 	// a = iw * G(iw), w->inf
-	void init_giw(std::vector<std::complex<double> >& g_iw, double beta, double a);
+	void init_giw(const std::vector<std::complex<double> >& g_iw, double beta, double a);
 
 	// return G(tau2, tau1)
 	double calc_interp(double tau2, double tau1);

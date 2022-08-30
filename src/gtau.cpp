@@ -44,7 +44,7 @@ void GTau::free()
 	allocated = false;
 }
 
-void GTau::init_gtau(std::vector<double>& g_tau, std::vector<double>& tau)
+void GTau::init_gtau(const std::vector<double>& g_tau, const std::vector<double>& tau)
 {
 	size_t N = g_tau.size() - 1;
 	double beta = g_tau.back();
@@ -63,13 +63,15 @@ void GTau::init_gtau(std::vector<double>& g_tau, std::vector<double>& tau)
 }
 
 // a = iw * G(iw), w->inf
-void GTau::init_giw(std::vector<complex<double> >& g_iw, double beta, double a)
+void GTau::init_giw(const std::vector<complex<double> >& g_iw, double beta, double a)
 {
 	size_t N = g_iw.size() * 2;
 
+	auto g_iw_noconst = const_cast<vector<complex<double> >&>(g_iw);  // remove const
+
 	// FFT; G(iw) -> G(tau)
 	vector<double> g_tau(N+1);
-	fft_fermion_radix2_omega2tau(g_tau.data(), g_iw.data(), beta, N, a);
+	fft_fermion_radix2_omega2tau(g_tau.data(), g_iw_noconst.data(), beta, N, a);
 	g_tau[N] = -a - g_tau[0];
 
 	vector<double> tau(N+1);

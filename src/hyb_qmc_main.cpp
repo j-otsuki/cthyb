@@ -33,7 +33,9 @@ class InputParams{
 public:
 	// [model]
 	int n_s;
-	string file_Delta, file_U, file_ef, file_Vsq;
+	string file_Delta_tau, file_Delta_iw;  // mutually exclusive
+	string file_Vsq;  // only when file_Delta_iw is set
+	string file_U, file_ef;
 	double beta;
 
 	// [control]
@@ -69,11 +71,20 @@ void InputParams::read_params(string& file_ini)
 
 		// [model]
 		n_s = pt.get<int>("model.n_s");
-		file_Delta = pt.get<string>("model.file_Delta");
-		file_Vsq = pt.get<string>("model.file_Vsq");
 		file_U = pt.get<string>("model.file_U");
 		file_ef = pt.get<string>("model.file_ef");
 		beta = pt.get<double>("model.beta");
+		file_Delta_tau = pt.get<string>("model.file_Delta_tau", "");
+		file_Delta_iw = pt.get<string>("model.file_Delta_iw", "");
+
+		// file_Delta_tau and file_Delta_iw are mutually exclusive
+		if (file_Delta_tau.empty() == file_Delta_iw.empty()){  // not XOR
+			cerr << "INPUT_ERROR: 'file_Delta_tau' and 'file_Delta_iw' are mutuallly exclusive required." << endl;
+			MPI_Abort(MPI_COMM_WORLD, 1);
+		}
+		if (!file_Delta_iw.empty()){
+			file_Vsq = pt.get<string>("model.file_Vsq");
+		}
 
 		// [control]
 		n_tau = pt.get<int>("control.n_tau");
@@ -93,7 +104,7 @@ void InputParams::read_params(string& file_ini)
 		r_shift = pt.get<double>("MC.r_shift", 0.4);
 	}
 	catch(boost::property_tree::ptree_error& e){
-		cerr << "ERROR: " << e.what() << endl;
+		cerr << "INPUT_ERROR: " << e.what() << endl;
 		MPI_Abort(MPI_COMM_WORLD, 1);
 	}
 }
@@ -106,7 +117,8 @@ void InputParams::summary()
 		cout << "=====================================" << endl;
 		cout << "[model]" << endl;
 		cout << "n_s = " << n_s << endl;
-		cout << "file_Delta = " << file_Delta << endl;
+		cout << "file_Delta_tau = " << file_Delta_tau << endl;
+		cout << "file_Delta_iw = " << file_Delta_iw << endl;
 		cout << "file_Vsq = " << file_Vsq << endl;
 		cout << "file_U = " << file_U << endl;
 		cout << "file_ef = " << file_ef << endl;
@@ -218,7 +230,31 @@ vec_vec_d read_U(const string& file_data, int n_s)
 	return data;
 }
 
-vec_vec_c read_Delta(const string& file_data, int n_s, int n_w)
+vec_vec_d read_Delta_tau(const string& file_data, int n_s, int n_t, vec_d& tau)
+{
+	vec_vec_d data = load(file_data, n_t+1, n_s+1);
+
+	if(my_rank==0){
+		cout << "\nRead file '" << file_data << "'" << endl;
+		print_size(data);
+	}
+
+	tau.resize(n_t + 1);
+	for(int i=0; i<=n_t; i++){
+		tau[i] = data[i][0];
+	}
+
+	vec_vec_d Delta_tau;
+	resize(Delta_tau, n_s, n_t + 1);
+	for(int s=0; s<n_s; s++){
+		for(int i=0; i<=n_t; i++){
+			Delta_tau[s][i] = data[i][1+s];
+		}
+	}
+	return Delta_tau;
+}
+
+vec_vec_c read_Delta_iw(const string& file_data, int n_s, int n_w)
 {
 	vec_vec_d data = load(file_data, n_w, 2*n_s);
 
@@ -506,7 +542,29 @@ void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& T
 }
 
 
-void print_Delta(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
+void print_Delta_tau(hyb_qmc_params& prm, vec_vec_d& delta_tau, vec_d& tau)
+{
+	int N_S = delta_tau.size();
+	int N_TAU = delta_tau[0].size() - 1;
+
+	FILE *fp;
+	char filename[128];
+
+	sprintf(filename, "delta_t.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<=N_TAU; i++){
+		fprintf(fp, "%.4e", tau[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e", delta_tau[s][i]);
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf("\n '%s'\n", filename);
+}
+
+
+void print_Delta_iw(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 {
 	int N_S = delta_omega.size();
 	int N_TAU = delta_omega[0].size() * 2;
@@ -614,12 +672,23 @@ int main(int argc, char* argv[])
 	MC.set_params(prm);
 
 	// Read and set Delta(iw)
-	vec_vec_c Delta_omega = read_Delta(in.file_Delta, in.n_s, in.n_tau/2);
-	vec_d Vsq = read_Vsq(in.file_Vsq, in.n_s);
-	if(my_rank==0){
-		print_Delta(prm, Delta_omega, Vsq);
+	if(!in.file_Delta_iw.empty()){
+		vec_vec_c Delta_omega = read_Delta_iw(in.file_Delta_iw, in.n_s, in.n_tau/2);
+		vec_d Vsq = read_Vsq(in.file_Vsq, in.n_s);
+		if(my_rank==0){
+			print_Delta_iw(prm, Delta_omega, Vsq);
+		}
+		MC.set_Delta_iw(Delta_omega, Vsq);
 	}
-	MC.set_Delta(Delta_omega, Vsq);
+	// Read and set Delta(tau)
+	if(!in.file_Delta_tau.empty()){
+		vec_d tau;
+		vec_vec_d Delta_tau = read_Delta_tau(in.file_Delta_tau, in.n_s, in.n_tau, tau);
+		if(my_rank==0){
+			print_Delta_tau(prm, Delta_tau, tau);
+		}
+		MC.set_Delta_tau(Delta_tau, tau);
+	}
 
 	// QMC calc
 	int flag_tp = in.flag_tp;
