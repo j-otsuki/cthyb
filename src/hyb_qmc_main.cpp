@@ -286,9 +286,18 @@ void print_statistics(phys_quant& PQ)
 	FILE *fp;
 	char filename[128];
 
+	// Find the maximum expansion order
+	int max_k = 0;
+	for(int i=0; i<PQ.Z_k[0].size(); i++){
+		for(int s=0; s<PQ.Z_k.size(); s++){
+			if( PQ.Z_k[s][i] != 0. )  max_k = i;
+		}
+	}
+
 	sprintf(filename, "stat.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<PQ.Z_k[0].size(); i++){
+	// for(int i=0; i<PQ.Z_k[0].size(); i++){
+	for(int i=0; i<=max_k; i++){
 		fprintf(fp, "%d", i);
 		for(int s=0; s<PQ.Z_k.size(); s++){
 			if( PQ.Z_k[s][i] != 0. )  fprintf(fp, " %.5e", PQ.Z_k[s][i]);
