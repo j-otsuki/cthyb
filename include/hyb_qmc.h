@@ -150,7 +150,8 @@ private:
 
 	// static struct cond_op S[N_S];
 	std::vector<Operators> S;
-	std::vector<struct green_func_0> Delta;
+	// std::vector<struct green_func_0> Delta;
+	std::vector<GTau> Delta;
 
 	t_sp SP;
 	t_tp TP;

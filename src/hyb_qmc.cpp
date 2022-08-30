@@ -214,7 +214,7 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	// allocate memory
 	//
 	Delta.resize(n_s);  // default constructor
-	for(int s=0; s<N_S; s++)  G0_alloc(Delta[s], N_TAU);
+	// for(int s=0; s<N_S; s++)  G0_alloc(Delta[s], N_TAU);
 
 	S.resize(n_s);
 	for(int i=0; i<n_s; i++)  S[i] = Operators(N_K);
@@ -267,7 +267,7 @@ HybQMC::~HybQMC()
 // 	MPI_Finalize();
 // 	#endif // HYB_QMC_MPI
 
-	for(int s=0; s<N_S; s++)  G0_free(Delta[s]);
+	// for(int s=0; s<N_S; s++)  G0_free(Delta[s]);
 }
 
 void HybQMC::set_nmc(const num_mc& n_mc_in)
@@ -360,7 +360,8 @@ void HybQMC::set_Delta(const vec_vec_c& Delta_omega_in, const vec_d& V_sq)
 	assert (check_size(V_sq, N_S));
 
 	for(int s=0; s<N_S; s++){
-		G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sq[s]);
+		// G0_init_fft(Delta[s], Delta_omega[s].data(), prm.beta, V_sq[s]);
+		Delta[s].init_giw(Delta_omega[s], prm.beta, V_sq[s]);
 	}
 }
 //  Delta = V_sq * G0
@@ -1620,11 +1621,11 @@ void HybQMC::add_seg(int sigma, int anti)
 	//
 	double Delta_tau1[F->k], Delta_tau2[F->k];
 	for(int i=0; i<F->k; i++){
-		Delta_tau1[i] = G0_calc_interp(Delta[sigma], F->tau2[i], tau1);
-		Delta_tau2[i] = G0_calc_interp(Delta[sigma], tau2, F->tau1[i]);
+		Delta_tau1[i] = Delta[sigma].calc_interp(F->tau2[i], tau1);
+		Delta_tau2[i] = Delta[sigma].calc_interp(tau2, F->tau1[i]);
 	}
 
-	double diag = G0_calc_interp(Delta[sigma], tau2, tau1);
+	double diag = Delta[sigma].calc_interp(tau2, tau1);
 	double lambda = F->D.add_lambda(Delta_tau1, Delta_tau2, diag);
 
 
@@ -2030,7 +2031,7 @@ void HybQMC::shift_tau1(int sigma, int i_tau1)
 	//
 	double Delta_tau1[F->k];
 	for(int i=0; i<F->k; i++){
-		Delta_tau1[i] = G0_calc_interp(Delta[sigma], F->tau2[i], tau1);
+		Delta_tau1[i] = Delta[sigma].calc_interp(F->tau2[i], tau1);
 	}
 
 	double lambda = F->D.shift1_lambda(i_tau1, Delta_tau1);
@@ -2272,7 +2273,7 @@ void HybQMC::shift_tau2(int sigma, int i_tau2)
 	double Delta_tau2[F->k];
 	for(int i=0; i<F->k; i++){
 // 		Delta_tau2[i] = calc_Delta_interp(tau2, F->tau1[i]);
-		Delta_tau2[i] = G0_calc_interp(Delta[sigma], tau2, F->tau1[i]);
+		Delta_tau2[i] = Delta[sigma].calc_interp(tau2, F->tau1[i]);
 	}
 
 	double lambda = F->D.shift2_lambda(i_tau2, Delta_tau2);
