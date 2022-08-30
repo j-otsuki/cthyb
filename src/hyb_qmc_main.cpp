@@ -8,7 +8,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 */
 
-static const char tag[64] = "v1.12";
+static const char version[64] = "0.1.0";
 
 #include <vector>
 #include <iostream>
@@ -649,6 +649,13 @@ void print_Delta_iw(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 
 int main(int argc, char* argv[])
 {
+	if(argc==2){
+		if(string(argv[1]) == "--version" || string(argv[1]) == "-v"){
+			cout << "hybqmc version " << version << endl;
+			exit(0);
+		}
+	}
+
 	#if HYB_QMC_MPI
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
