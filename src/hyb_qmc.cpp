@@ -1167,7 +1167,7 @@ static inline void average_sub(std::complex<double> &msr, std::complex<double> &
 
 inline void HybQMC::fft_chi_after_interp(const vec_d &chi_tau, vec_c &chi_omega)
 {
-	double chi_tau2[2*N_TP2+1];
+	std::vector<double> chi_tau2(2*N_TP2+1);
 
 	// interpolation
 	gsl_interp_accel *acc = gsl_interp_accel_alloc ();
@@ -1184,7 +1184,13 @@ inline void HybQMC::fft_chi_after_interp(const vec_d &chi_tau, vec_c &chi_omega)
 
 	// extend range from [0:beta/2] to [0:beta]
 	for(int i=0; i<N_TP2; i++)  chi_tau2[2*N_TP2-i] = chi_tau2[i];
-	fft_boson_radix2_tau2omega(chi_tau2, chi_omega.data(), prm.beta, 2*N_TP2);
+
+	// FFT
+	fft_boson_radix2_tau2omega(chi_tau2.data(), chi_omega.data(), prm.beta, 2*N_TP2);
+	// vec_d temp(chi_tau2);
+	// temp.pop_back();  // remove [2*N_TP2]
+	// assert (temp.size() == 2*N_TP2);
+	// fft_boson_tau2iw(temp, chi_omega, prm.beta);
 }
 
 inline void HybQMC::average_stat(int n_bin)
@@ -1274,7 +1280,11 @@ inline void HybQMC::average_sp(int n_bin)
 
 	// FFT : G(tau) -> G(iw)
 	for(int s=0; s<N_S; s++){
-		fft_fermion_radix2_tau2omega(SP[s].Gf_tau.data(), SP[s].Gf_omega.data(), prm.beta, N_TAU, SP[s].jump);
+		// fft_fermion_radix2_tau2omega(SP[s].Gf_tau.data(), SP[s].Gf_omega.data(), prm.beta, N_TAU, SP[s].jump);
+		vec_d temp(SP[s].Gf_tau);
+		temp.pop_back();  // remove [N_TAU]
+		assert (temp.size() == N_TAU);
+		fft_fermion_tau2iw(temp, SP[s].Gf_omega, prm.beta, SP[s].jump);
 	}
 
 	// Self-energy (Dyson equation) IF Delta_omega is set
@@ -1307,7 +1317,11 @@ inline void HybQMC::average_sp(int n_bin)
 
 		double jump = - SP[s].GSigma_tau.front() - SP[s].GSigma_tau.back();
 
-		fft_fermion_radix2_tau2omega(SP[s].GSigma_tau.data(), SP[s].self_omega.data(), prm.beta, N_TAU, jump);
+		// fft_fermion_radix2_tau2omega(SP[s].GSigma_tau.data(), SP[s].self_omega.data(), prm.beta, N_TAU, jump);
+		vec_d temp(SP[s].GSigma_tau);
+		temp.pop_back();  // remove [N_TAU]
+		assert (temp.size() == N_TAU);
+		fft_fermion_tau2iw(temp, SP[s].self_omega, prm.beta, jump);
 
 		for(int i=0; i<N_TAU/2; i++){
 			SP[s].self_omega[i] /= SP[s].Gf_omega[i];

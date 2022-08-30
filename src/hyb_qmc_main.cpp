@@ -600,12 +600,15 @@ void print_Delta_iw(hyb_qmc_params& prm, vec_vec_c& delta_omega, vec_d& Vsq)
 		tau[i] = (double)i * prm.beta / (double)N_TAU;
 	}
 
-	// double G0_tau[N_TAU+1];
 	vec_vec_d delta_tau;
-	resize(delta_tau, N_S, N_TAU+1);
+	// resize(delta_tau, N_S, N_TAU+1);
+	delta_tau.resize(N_S);
 	for(int s=0; s<N_S; s++){
-		fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
-		delta_tau[s][N_TAU] = - Vsq[s] - delta_tau[s][0];
+		// fft_fermion_radix2_omega2tau(delta_tau[s].data(), delta_omega[s].data(), prm.beta, N_TAU, Vsq[s]);
+		fft_fermion_iw2tau(delta_tau[s], delta_omega[s], prm.beta, Vsq[s]);
+		assert (delta_tau[s].size() == N_TAU);
+		// delta_tau[s][N_TAU] = - Vsq[s] - delta_tau[s][0];
+		delta_tau[s].push_back(- Vsq[s] - delta_tau[s][0]);
 	}
 
 	sprintf(filename, "delta_t.dat");
