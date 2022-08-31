@@ -418,45 +418,38 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	printf(" '%s'\n", filename);
 
 
-	// Number of frequencies used for Pade approximation of Gf (N_PADE^2 memory)
+	// Number of frequencies used for Pade approximation
 	// MAX: N_TAU/2 (all data),  MIN: 0 (do not evaluate)
-	// int N_PADE = std::min(N_TAU/2, 8192);
+	int n_iw_pade = min(N_TAU/2, 8192);
+	int n_w = 1001;
+	double w_max = 4.0;
+	double w_min = -w_max;
 
-	// complex<double> i_omega_f[N_PADE];
+	if(n_iw_pade){
+		vec_c i_omega_f(n_iw_pade);
+		for(int i=0; i<n_iw_pade; i++){
+			i_omega_f[i] = complex<double>(0, iw[i]);
+		}
 
-	// if(N_PADE){
-	// 	complex<double> Gf_pade[N_S][N_PADE];
+		vector<Pade> pade;
+		for(int s=0; s<N_S; s++){
+			pade.push_back(Pade(i_omega_f, SP[s].Gf_omega));
+		}
 
-	// 	for(int i=0; i<N_PADE; i++){
-	// 		double omega_f = (double)(2*i+1) * M_PI / prm.beta;
-	// 		i_omega_f[i] = IMAG * omega_f;
-	// 	}
-
-	// 	for(int s=0; s<N_S; s++){
-	// 		pade_init(i_omega_f, SP[s].Gf_w.data(), Gf_pade[s], N_PADE);
-	// 	}
-
-	// 	sprintf(filename, "Gf_pade.dat");
-	// 	fp=fopen(filename, "w");
-	// 	for(int i=0; i<1000; i++){
-
-	// 		complex<double> w = -2 * prm_D + 4 * prm_D / 999. * (double)i;
-	// 		copmlex<double> w =
-	// 		// double delta0 = M_PI * prm_V_sqr_imp[0] / prm_D * 0.5;
-
-	// 		fprintf(fp, "%.6e", real(w));
-	// 		for(int s=0; s<N_S; s++){
-	// 			complex<double> temp_Gf = pade_calc(i_omega_f, Gf_pade[s], w, N_PADE);
-	// 			fprintf(fp, " %.6e %.6e", real(temp_Gf), imag(temp_Gf));
-	// 		}
-	// 		// fprintf(fp, " %.6e",
-	// 		//  -delta0 / (pow(real(w)-prm.ef[0]-prm.U[0][0]*0.5,2) + pow(delta0,2)) );
-
-	// 		fprintf(fp, "\n");
-	// 	}
-	// 	fclose(fp);
-	// 	printf(" '%s'\n", filename);
-	// }
+		sprintf(filename, "Gf_pade.dat");
+		fp=fopen(filename, "w");
+		for(int i=0; i<n_w; i++){
+			complex<double> w = w_min + (w_max - w_min) * double(i) / double(n_w - 1);
+			fprintf(fp, "%.6e", real(w));
+			for(int s=0; s<N_S; s++){
+				complex<double> temp_Gf = pade[s].eval(w);
+				fprintf(fp, " %.6e %.6e", real(temp_Gf), imag(temp_Gf));
+			}
+			fprintf(fp, "\n");
+		}
+		fclose(fp);
+		printf(" '%s'\n", filename);
+	}
 
 
 	sprintf(filename, "self_w.dat");

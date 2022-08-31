@@ -1,63 +1,57 @@
-/*
-
-Pade approximation
-
-written by Junya Otsuki, 2009
-Dept. of Physics, Tohoku University, Sendai, Japan
-
+/*!
+ \file pade_c.cpp
+ \brief Definition of class Pade
 */
 
 #include "pade.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 using namespace std;
 
 
-void pade_init(complex<double> *z, complex<double> *u, complex<double> *a, int N)
+Pade::Pade(const vector<complex<double> > &z, const vector<complex<double> > &u)
 {
-// 	printf("init_pade...\n");
-	
-// 	complex<double> g[N][N];  // g_n(z_i)
-	
-	complex<double>* g[N];  // g_n(z_i)
-	for(int i=0; i<N; i++){
-		g[i] = (complex<double> *)malloc(N*sizeof(complex<double>));
-		if(g[i]==NULL){
-			printf("*** memory not allocated\n");
-			exit(0);
-		}
-	}
-	
-	for(int i=0; i<N; i++) g[0][i] = u[i];
-	for(int n=1; n<N; n++){
-		for(int i=n; i<N; i++)  g[n][i] = ( g[n-1][n-1] / g[n-1][i] - 1.0 ) / (z[i] - z[n-1]);
-	}
-	
-	for(int i=0; i<N; i++)  a[i] = g[i][i];
-	
-	for(int i=0; i<N; i++)  free(g[i]);
+	init(z, u);
 }
 
-complex<double> pade_calc(complex<double> *z, complex<double> *a, complex<double> w, int N)
+void Pade::init(const vector<complex<double> > &z, const vector<complex<double> > &u)
 {
-	complex<double> A0 = 0.0, A1 = a[0], A2, B0 = 1.0, B1 = 1.0, B2;
-	
-	for(int i=1; i<N; i++){  // (N-1)/2
-		A2 = A1 + ( w - z[i-1] ) * a[i] * A0;
-		B2 = B1 + ( w - z[i-1] ) * a[i] * B0;
-		
+	m_n = min(z.size(), u.size());
+	m_z = z;  // copy
+	m_a.resize(m_n);
+
+	// g_n(z_i)
+	vector<complex<double> > g0(u);  // copy
+	vector<complex<double> > g1(m_n);
+
+	m_a[0] = u[0];
+	for(int n=1; n<m_n; n++){
+		// g0[i] = g_{n-1}[i]
+		// g1[i] = g_{n}[i]
+		for(int i=n; i<m_n; i++)  g1[i] = ( g0[n-1] / g0[i] - 1.0 ) / (z[i] - z[n-1]);
+		m_a[n] = g1[n];  // g[n][n]
+		g0 = g1;
+	}
+}
+
+complex<double> Pade::eval(complex<double> w)
+{
+	complex<double> A0 = 0.0, A1 = m_a[0], A2, B0 = 1.0, B1 = 1.0, B2;
+
+	for(int i=1; i<m_n; i++){  // (N-1)/2
+		A2 = A1 + ( w - m_z[i-1] ) * m_a[i] * A0;
+		B2 = B1 + ( w - m_z[i-1] ) * m_a[i] * B0;
+
 // 		printf("%d  %e  %e\n", i, abs(A2), abs(B2));
-		A1/=B2;
-		A2/=B2;
-		B1/=B2;
-		B2/=B2;
-		
+		A1 /= B2;
+		A2 /= B2;
+		B1 /= B2;
+		B2 /= B2;
+
 		A0 = A1;
 		A1 = A2;
 		B0 = B1;
 		B1 = B2;
 	}
-	
+
 	return( A2 / B2 );
 }

@@ -36,19 +36,19 @@ plot "Gf_w.dat"u 1:2 title"0 Re" ls 1, ""u 1:3 title"0 Im" ls 2\
 set output
 
 
-# set terminal postscript eps color enhanced "Times-Roman" 24
-# set output "Gf_pade.eps"
-# set xlabel "{/Symbol w}"
-# set ylabel "\261Im{/Times-Italic G}_{imp}({/Symbol w})"
-# set xrange[-1.5:1.5]
-# set yrange[0:*]
+set terminal postscript eps color enhanced "Times-Roman" 24
+set output "Gf_pade.eps"
+set xlabel "{/Symbol w}"
+set ylabel "{/Symbol r}_{imp}({/Symbol w})"
+set xrange[*:*]
+set yrange[0:*]
 
-# set key top
+set key top
 
-# plot "Gf_pade.dat"u 1:(-$3) title"0" w l ls 1\
-# , ""u 1:(-$5) title"1" w l ls 2
+plot "Gf_pade.dat"u 1:(-$3/pi) title"0" w l ls 1\
+, ""u 1:(-$5/pi) title"1" w l ls 2
 
-# set output
+set output
 
 
 

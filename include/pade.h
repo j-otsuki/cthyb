@@ -1,29 +1,32 @@
-/*
-
-Pade approximation
-
-written by Junya Otsuki, 2009
-Dept. of Physics, Tohoku University, Sendai, Japan
-
+/*!
+ \file pade.h
+ \brief Declaration of class Pade
 */
 
-#ifndef _PADE_H
-#define _PADE_H
-
 #include <complex>
+#include <vector>
 
-//
-// Analytic continuation by the Pade approximation
-//
-// u({z_i}) : the original discrete function.
-// a : coefficient set of the approximated function 'u_{pade}(z)'
-// N : length of arrays 'z', 'u' and 'a'
-//
+//! Analytic continuation by the Pade approximation
 
-// initialize 'a'
-void pade_init(std::complex<double> *z, std::complex<double> *u, std::complex<double> *a, int N);
+//! HOW TO USE:
+//!  Pade obj(z, u);  ||  Pade obj;  obj.init(z,u);
+//!  for(w){
+//!    g = obj.eval(w);
+//!  }
+class Pade{
+public:
+	Pade() {};
+	Pade(const std::vector<std::complex<double> > &z, const std::vector<std::complex<double> > &u);
 
-// calculate approximated value 'u_{pade}(w)' at 'w'
-std::complex<double> pade_calc(std::complex<double> *z, std::complex<double> *a, std::complex<double> w, int N);
+	//! initialize a rational function u_{pade}(w) using N values of (u_i, z_i)
+	void init(const std::vector<std::complex<double> > &z, const std::vector<std::complex<double> > &u);
 
-#endif // _PADE_H
+	//! evaluate u_{pade}(w)
+	std::complex<double> eval(std::complex<double> w);
+private:
+	int m_n;  // size
+
+	//! coefficient set of the approximated function 'u_{pade}(z)'
+	std::vector<std::complex<double> > m_a;
+	std::vector<std::complex<double> > m_z;
+};
