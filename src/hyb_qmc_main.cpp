@@ -49,6 +49,11 @@ public:
 	int n_bin, n_msr, n_add, n_shift, n_warmup;
 	double r_add, r_shift;
 
+	// [pade]
+	int n_w;
+	double w_min, w_max;
+	int n_iw_max;  // Maximum number of Matsubara frequencies; 0 for no calculation.
+
 	// methods
 	InputParams(bool verbose) : verbose(verbose) {};
 	void read_params(string& file_ini);
@@ -102,6 +107,12 @@ void InputParams::read_params(string& file_ini)
 		r_add = pt.get<double>("MC.r_add", 0.4);
 		n_shift = pt.get<int>("MC.n_shift", 0);
 		r_shift = pt.get<double>("MC.r_shift", 0.4);
+
+		// [pade]
+		n_w = pt.get<int>("pade.n_w", 1001);
+		w_min = pt.get<int>("pade.w_min", -4);
+		w_max = pt.get<int>("pade.w_max", 4);
+		n_iw_max = pt.get<int>("pade.n_iw_max", 8192);
 	}
 	catch(boost::property_tree::ptree_error& e){
 		cerr << "INPUT_ERROR: " << e.what() << endl;
@@ -140,6 +151,12 @@ void InputParams::summary()
 		cout << "r_add = " << r_add << endl;
 		cout << "n_shift = " << n_shift << endl;
 		cout << "r_shift = " << r_shift << endl;
+
+		cout << "\n[pade]" << endl;
+		cout << "n_w = " << n_w << endl;
+		cout << "w_min = " << w_min << endl;
+		cout << "w_max = " << w_max << endl;
+		cout << "n_iw_max = " << n_iw_max << endl;
 		cout << "=====================================" << endl;
 	}
 }
@@ -368,7 +385,7 @@ void print_statistics(phys_quant& PQ)
 	printf("\n '%s'\n", filename);
 }
 
-void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
+void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP, InputParams& in)
 {
 	int N_S = SP.size();
 	int N_TAU = SP[0].Gf_tau.size() - 1;
@@ -459,12 +476,11 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	printf(" '%s'\n", filename);
 
 
-	// Number of frequencies used for Pade approximation
-	// MAX: N_TAU/2 (all data),  MIN: 0 (do not evaluate)
-	int n_iw_pade = min(N_TAU/2, 8192);
-	int n_w = 1001;
-	double w_max = 4.0;
-	double w_min = -w_max;
+	// Pade approximation
+	int n_iw_pade = min(N_TAU/2, in.n_iw_max);
+	int n_w = in.n_w;
+	double w_min = in.w_min;
+	double w_max = in.w_max;
 
 	if(n_iw_pade){
 		vec_c i_omega_f(n_iw_pade);
@@ -509,7 +525,6 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 		fclose(fp);
 		printf(" '%s'\n", filename);
 	}
-
 }
 
 
@@ -753,7 +768,7 @@ int main(int argc, char* argv[])
 	if(my_rank==0){
 		print_pq(prm, PQ, SP);
 		print_statistics(PQ);
-		print_single_particle(prm, PQ, SP);
+		print_single_particle(prm, PQ, SP, in);
 
 		if(flag_tp){
 			print_two_particle(PQ, TP, TP_tau, TP_sp, TP_ch);
