@@ -85,11 +85,27 @@ set output
 
 
 set terminal postscript eps color enhanced "Times-Roman" 24
+set output "self_pade.eps"
+set xlabel "{/Symbol w}"
+set ylabel "\\261Im{/Symbol S}_{imp}({/Symbol w})"
+set xrange[*:*]
+set yrange[0:*]
+
+set key top
+
+plot "self_pade.dat"u 1:(-$3) title"0" w l ls 1\
+, ""u 1:(-$5) title"1" w l ls 2
+
+set output
+
+
+
+set terminal postscript eps color enhanced "Times-Roman" 24
 set output "GSigma_t.eps"
 set xlabel "{/Symbol t}"
 set ylabel "({/Times-Italic G}{/Symbol S})({/Symbol t})"
 set xrange[0:*]
-set yrange[:0]
+set yrange[*:0]
 
 plot "GSigma_t.dat"u 1:2:3 title"0" w ye ls 1\
 , ""u 1:4:5 title"1" w ye ls 2\

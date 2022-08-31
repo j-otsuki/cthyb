@@ -418,40 +418,6 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 	printf(" '%s'\n", filename);
 
 
-	// Number of frequencies used for Pade approximation
-	// MAX: N_TAU/2 (all data),  MIN: 0 (do not evaluate)
-	int n_iw_pade = min(N_TAU/2, 8192);
-	int n_w = 1001;
-	double w_max = 4.0;
-	double w_min = -w_max;
-
-	if(n_iw_pade){
-		vec_c i_omega_f(n_iw_pade);
-		for(int i=0; i<n_iw_pade; i++){
-			i_omega_f[i] = complex<double>(0, iw[i]);
-		}
-
-		vector<Pade> pade;
-		for(int s=0; s<N_S; s++){
-			pade.push_back(Pade(i_omega_f, SP[s].Gf_omega));
-		}
-
-		sprintf(filename, "Gf_pade.dat");
-		fp=fopen(filename, "w");
-		for(int i=0; i<n_w; i++){
-			complex<double> w = w_min + (w_max - w_min) * double(i) / double(n_w - 1);
-			fprintf(fp, "%.6e", real(w));
-			for(int s=0; s<N_S; s++){
-				complex<double> temp_Gf = pade[s].eval(w);
-				fprintf(fp, " %.6e %.6e", real(temp_Gf), imag(temp_Gf));
-			}
-			fprintf(fp, "\n");
-		}
-		fclose(fp);
-		printf(" '%s'\n", filename);
-	}
-
-
 	sprintf(filename, "self_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_TAU/2; i++){
@@ -490,7 +456,60 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP)
 		fprintf(fp, "\n");
 	}
 	fclose(fp);
-	printf("\n '%s'\n", filename);
+	printf(" '%s'\n", filename);
+
+
+	// Number of frequencies used for Pade approximation
+	// MAX: N_TAU/2 (all data),  MIN: 0 (do not evaluate)
+	int n_iw_pade = min(N_TAU/2, 8192);
+	int n_w = 1001;
+	double w_max = 4.0;
+	double w_min = -w_max;
+
+	if(n_iw_pade){
+		vec_c i_omega_f(n_iw_pade);
+		for(int i=0; i<n_iw_pade; i++){
+			i_omega_f[i] = complex<double>(0, iw[i]);
+		}
+
+		vector<Pade> pade(N_S);
+		for(int s=0; s<N_S; s++){
+			pade[s] = Pade(i_omega_f, SP[s].Gf_omega);
+		}
+
+		sprintf(filename, "Gf_pade.dat");
+		fp=fopen(filename, "w");
+		for(int i=0; i<n_w; i++){
+			complex<double> w = w_min + (w_max - w_min) * double(i) / double(n_w - 1);
+			fprintf(fp, "%.6e", real(w));
+			for(int s=0; s<N_S; s++){
+				complex<double> temp_Gf = pade[s].eval(w);
+				fprintf(fp, " %.6e %.6e", real(temp_Gf), imag(temp_Gf));
+			}
+			fprintf(fp, "\n");
+		}
+		fclose(fp);
+		printf(" '%s'\n", filename);
+
+		for(int s=0; s<N_S; s++){
+			pade[s] = Pade(i_omega_f, SP[s].self_omega);
+		}
+
+		sprintf(filename, "self_pade.dat");
+		fp=fopen(filename, "w");
+		for(int i=0; i<n_w; i++){
+			complex<double> w = w_min + (w_max - w_min) * double(i) / double(n_w - 1);
+			fprintf(fp, "%.6e", real(w));
+			for(int s=0; s<N_S; s++){
+				complex<double> temp_Gf = pade[s].eval(w);
+				fprintf(fp, " %.6e %.6e", real(temp_Gf), imag(temp_Gf));
+			}
+			fprintf(fp, "\n");
+		}
+		fclose(fp);
+		printf(" '%s'\n", filename);
+	}
+
 }
 
 
