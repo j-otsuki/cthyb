@@ -1,0 +1,16 @@
+set style line 1 lt 1 lc 1 lw 2 pt 2 ps 1.5
+set style line 2 lt 1 lc 1 lw 2 pt 4 ps 1.5
+set style line 3 lt 1 lc 2 lw 2 pt 2 ps 1.5
+set style line 4 lt 1 lc 2 lw 2 pt 4 ps 1.5
+set style line 5 lt 1 lc 3 lw 2 pt 2 ps 1.5
+set style line 6 lt 1 lc 3 lw 2 pt 4 ps 1.5
+set style line 7 lt 1 lc 4 lw 2 pt 2 ps 1.5
+set style line 8 lt 1 lc 4 lw 2 pt 4 ps 1.5
+set style line 9 lt 1 lc 5 lw 2 pt 2 ps 1.5
+set style line 10 lt 1 lc 5 lw 2 pt 4 ps 1.5
+set style line 11 lt 1 lc 6 lw 2 pt 1 ps 1.5
+set style line 12 lt 1 lc 6 lw 2 pt 6 ps 1.5
+set style line 13 lt 1 lc 7 lw 2 pt 1 ps 1.5
+set style line 14 lt 1 lc 7 lw 2 pt 6 ps 1.5
+set style line 15 lt 1 lc 8 lw 2 pt 1 ps 1.5
+set style line 16 lt 1 lc 8 lw 2 pt 6 ps 1.5

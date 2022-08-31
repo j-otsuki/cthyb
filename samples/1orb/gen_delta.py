@@ -11,7 +11,7 @@ print(f"V^2 = {vsq}")
 w = (2*np.arange(nw)+1) * np.pi / beta
 delta_im = -np.arctan(1/w) * vsq
 
-with open("delta.in", "w") as f:
+with open("delta_w.in", "w") as f:
     for d in delta_im:
         print(f"0.0 {d:.8e} 0.0 {d:.8e}", file=f)
-print("'delta.in' generated")
+print("'delta_w.in' generated")
