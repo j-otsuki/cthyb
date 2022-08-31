@@ -1,7 +1,7 @@
 import numpy as np
 
-beta = 10.0
-nw = 512
+beta = 100.0
+nw = 1024
 vsq = 0.1
 
 print(f"beta = {beta}")
