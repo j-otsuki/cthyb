@@ -22,14 +22,16 @@ void Pade::init(const vector<complex<double> > &z, const vector<complex<double> 
 	// g_n(z_i)
 	vector<complex<double> > g0(u);  // copy
 	vector<complex<double> > g1(m_n);
+	vector<complex<double> > *p_g0 = &g0, *p_g1 = &g1;
 
 	m_a[0] = u[0];
 	for(int n=1; n<m_n; n++){
 		// g0[i] = g_{n-1}[i]
 		// g1[i] = g_{n}[i]
-		for(int i=n; i<m_n; i++)  g1[i] = ( g0[n-1] / g0[i] - 1.0 ) / (z[i] - z[n-1]);
-		m_a[n] = g1[n];  // g[n][n]
-		g0 = g1;
+		for(int i=n; i<m_n; i++)  (*p_g1)[i] = ( (*p_g0)[n-1] / (*p_g0)[i] - 1.0 ) / (z[i] - z[n-1]);
+		m_a[n] = (*p_g1)[n];  // g[n][n]
+		// g0 = g1;
+		swap(p_g0, p_g1);
 	}
 }
 
