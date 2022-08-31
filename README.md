@@ -7,9 +7,9 @@ Continuous-time quantum Monte Carlo method for an impurity Anderson model. The s
 - MPI
 - GSL
 - Boost (header only)
-- GGTW
+- FFTW
 
-## Install
+## Installation
 
 Clone the repository by
 ```
@@ -33,7 +33,7 @@ Intel compiler can be used by
 CC=icc CXX=icpc cmake3 -DCMAKE_INSTALL_PREFIX=$HOME/local ../cthyb
 ```
 
-## Sample(s)
+## Samples
 
 Samples are provided in samples/ directory.
 How to run: 
