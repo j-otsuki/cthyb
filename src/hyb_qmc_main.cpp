@@ -528,7 +528,7 @@ void print_single_particle(hyb_qmc_params& prm, phys_quant& PQ, t_sp& SP, InputP
 }
 
 
-void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& TP_sp, two_particle& TP_ch)
+void print_two_particle(hyb_qmc_params& prm, phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& TP_sp, two_particle& TP_ch)
 {
 	printf("\n static susceptibility\n");
 	printf("  spin   : %.5e +- %.4e\n", PQ.stat_suscep_sp, PQ.stat_suscep_sp_err);
@@ -559,11 +559,15 @@ void print_two_particle(phys_quant& PQ, t_tp& TP, vec_d& TP_tau, two_particle& T
 	printf("\n '%s'\n", filename);
 
 
+	double iw[N_TP2+1];
+	for(int i=0; i<=N_TP2; i++){
+		iw[i] = (double)(2*i) * M_PI / prm.beta;
+	}
 
 	sprintf(filename, "chi_w.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_TP2; i++){
-		fprintf(fp, "%d %.5e %.5e\n", i, real(TP_sp.chi_omega[i]), real(TP_ch.chi_omega[i]));
+	for(int i=0; i<=N_TP2; i++){
+		fprintf(fp, "%.4e %.5e %.5e\n", iw[i], real(TP_sp.chi_omega[i]), real(TP_ch.chi_omega[i]));
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
@@ -771,7 +775,7 @@ int main(int argc, char* argv[])
 		print_single_particle(prm, PQ, SP, in);
 
 		if(flag_tp){
-			print_two_particle(PQ, TP, TP_tau, TP_sp, TP_ch);
+			print_two_particle(prm, PQ, TP, TP_tau, TP_sp, TP_ch);
 		}
 
 		clock_t time_end = clock();
