@@ -32,6 +32,25 @@ static FILE *fp_log;
 
 static int my_rank=0, process_num=1;
 
+struct vertex_temp{
+// 	complex<double> phase_i[2*N_VX1+N_VX2][N_K];
+// 	complex<double> phase_j[2*N_VX1+N_VX2][N_K];
+// 	complex<double> u[2*N_VX1+N_VX2][2*N_VX1+N_VX2];
+// 	complex<double> u2[2*N_VX1+N_VX2][2*N_VX1+N_VX2];
+	vec_vec_c phase_i;  // [2*N_VX1+N_VX2][N_K]
+	vec_vec_c phase_j;  // [2*N_VX1+N_VX2][N_K]
+	vec_vec_c u;  // [2*N_VX1+N_VX2][2*N_VX1+N_VX2]
+	vec_vec_c u2;  // [2*N_VX1+N_VX2][2*N_VX1+N_VX2]
+	// int flag_occup1[N_K];
+	// int flag_occup2[N_K];
+	// double fac_g1[N_K];
+	// complex<double> occup[N_VX2];
+
+	vertex_temp() {};
+	vertex_temp(int n_k, int n_vx1, int n_vx2);
+};
+std::vector<struct vertex_temp> VX_temp;  // [N_S]
+
 
 //============================================================================
 
@@ -76,6 +95,51 @@ void two_particle::allzeros()
 
 //============================================================================
 
+vertex::vertex(int n_vx1, int n_vx2)
+{
+	resize(Gfour, 2*n_vx1, 2*n_vx1, n_vx2);
+	resize(gamma2, 2*n_vx1, 2*n_vx1, n_vx2);
+	resize(gamma, 2*n_vx1, 2*n_vx1, n_vx2);
+}
+
+void vertex::allzeros()
+{
+	zeros(Gfour);
+	zeros(gamma2);
+	zeros(gamma);
+}
+
+vertex_aux::vertex_aux(int n_s, int n_vx1, int n_vx2)
+{
+	resize(G, n_s, 2*n_vx1+n_vx2);
+	resize(self, n_s, 2*n_vx1+n_vx2);
+	resize(suscep_lo, n_s, n_s, n_vx2);
+}
+
+void vertex_aux::allzeros()
+{
+	zeros(G);
+	zeros(self);
+	zeros(suscep_lo);
+}
+
+vertex_temp::vertex_temp(int n_k, int n_vx1, int n_vx2)
+{
+	int n_iw = 2*n_vx1+n_vx2;
+
+	// vec_vec_c phase_i(2*N_VX1+N_VX2, N_K);
+	// vec_vec_c phase_j(2*N_VX1+N_VX2, N_K);
+	// vec_vec_c phase_i, phase_j;
+	resize(phase_i, n_iw, n_k);
+	resize(phase_j, n_iw, n_k);
+
+	// vec_vec_c u, u2;
+	resize(u, n_iw, n_iw);
+	resize(u2, n_iw, n_iw);
+}
+
+//============================================================================
+
 phys_quant::phys_quant(int n_s, int n_k)
 	: Z_ktot(n_s*n_k)
 	, Z_ktot_err(n_s*n_k)
@@ -114,7 +178,7 @@ void phys_quant::allzeros()
 
 //============================================================================
 
-HybQMC::phys_quant_bin::phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp)
+HybQMC::phys_quant_bin::phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp, int n_vx1, int n_vx2)
 	: n_k(n_s, n_k)
 	, n_ktot(n_s*n_k)
 	, Gf(n_s, n_tau+1)
@@ -122,6 +186,13 @@ HybQMC::phys_quant_bin::phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp)
 	, f_number(n_s)
 	, f_number_int(n_s)
 	, chi(n_s, n_s, n_tp+1)
+	, vx_Gf(n_s, 2*n_vx1+n_vx2)
+	, vx_self(n_s, 2*n_vx1+n_vx2)
+	, vx_G4_lo(n_s, n_s, 2*n_vx1, 2*n_vx1, n_vx2)
+	, vx_G4_tr(n_s, n_s, 2*n_vx1, 2*n_vx1, n_vx2)
+	, vx_gamma_lo(n_s, n_s, 2*n_vx1, 2*n_vx1, n_vx2)
+	, vx_gamma_tr(n_s, n_s, 2*n_vx1, 2*n_vx1, n_vx2)
+	, vx_suscep(n_s, n_s, n_vx2)
 {
 	ave_sign = 0;
 	occup_tot = occup_mom = 0;
@@ -139,6 +210,13 @@ void HybQMC::phys_quant_bin::allzeros()
 	zeros(f_number);
 	zeros(f_number_int);
 	zeros(chi);
+	zeros(vx_Gf);
+	zeros(vx_self);
+	zeros(vx_G4_lo);
+	zeros(vx_G4_tr);
+	zeros(vx_gamma_lo);
+	zeros(vx_gamma_tr);
+	zeros(vx_suscep);
 }
 
 
@@ -147,7 +225,7 @@ void HybQMC::phys_quant_bin::allzeros()
 // FUNCTIONS TO BE CALLED BY MAIN FUNCTION
 //
 
-HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed)
+HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int n_vx1, int n_vx2, int rand_seed)
 	: N_ADD_MIN(n_s), N_SHIFT_MIN(1), MAX_R_CORR(0), K_TOT_MIN(20 * n_s)
 {
 	N_TAU = n_tau;
@@ -155,6 +233,8 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 	N_S = n_s;
 	N_TP = n_tp;
 	N_TP2 = n_tp2;
+	N_VX1 = n_vx1;
+	N_VX2 = n_vx2;
 
 	// A seed of random number (determined from time if seed=0)
 	unsigned long seed = rand_seed;
@@ -173,6 +253,7 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 		printf("\nHybQMC::HybQMC\n");
 		printf(" N_S = %d\n", N_S);
 		printf(" (N_TAU, N_TP, N_TP2) = (%d, %d, %d)\n", N_TAU, N_TP, N_TP2);
+		printf(" (N_VX1, N_VX2) = (%d, %d)\n", N_VX1, N_VX2);
 		printf(" seed = %ld\n", seed);
 		printf(" MAX_R_CORR = %d\n", MAX_R_CORR);
 		printf(" K_TOT_MIN = %d\n", K_TOT_MIN);
@@ -235,8 +316,22 @@ HybQMC::HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_
 
 	TP_tau.resize(n_tp+1);
 
-	B = phys_quant_bin(N_K, n_s, n_tau, n_tp);
-	B_TOT = phys_quant_bin(N_K, n_s, n_tau, n_tp);
+	resize(VX_lo, n_s, n_s);
+	resize(VX_tr, n_s, n_s);
+	for(int i=0; i<n_s; i++){
+		for(int j=0; j<n_s; j++){
+			VX_lo[i][j] = vertex(n_vx1, n_vx2);
+			VX_tr[i][j] = vertex(n_vx1, n_vx2);
+		}
+	}
+
+	VX_aux = vertex_aux(n_s, n_vx1, n_vx2);
+
+	VX_temp.resize(n_s);
+	for(int i=0; i<n_s; i++)  VX_temp[i] = vertex_temp(N_K, n_vx1, n_vx2);
+
+	B = phys_quant_bin(N_K, n_s, n_tau, n_tp, n_vx1, n_vx2);
+	B_TOT = phys_quant_bin(N_K, n_s, n_tau, n_tp, n_vx1, n_vx2);
 
 // 	*my_rank_out = my_rank;
 
@@ -409,7 +504,7 @@ void HybQMC::set_moment(const vec_d& moment_f_in)
 	}
 }
 
-void HybQMC::eval(bool flag_tp)
+void HybQMC::eval(int i_measure)
 {
 	if(my_rank==0){
 		fp_log=fopen(LOG_FILE, "a");
@@ -438,9 +533,6 @@ void HybQMC::eval(bool flag_tp)
 	}
 
 	init_measure();
-
-	int i_measure = 1;
-	if (flag_tp)  i_measure = 2;
 
 	// measuring physical quantities
 	sampling(i_measure, n_mc.N_BIN, n_mc.N_MSR, n_mc.N_ADD, n_mc.N_SHIFT);
@@ -733,6 +825,14 @@ void HybQMC::init_measure()
 	}
 	TP_sp.allzeros();
 	TP_ch.allzeros();
+
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			VX_lo[s1][s2].allzeros();
+			VX_tr[s1][s2].allzeros();
+		}
+	}
+	VX_aux.allzeros();
 }
 
 void HybQMC::init_measure_bin()
@@ -754,7 +854,7 @@ inline void HybQMC::measure_stat()
 	B.n_ktot[K]++;
 
 	for(int s=0; s<N_S; s++){
-		B.n_k[s][S[s].k] ++;
+		B.n_k(s, S[s].k) ++;
 	}
 
 	B.ave_sign += w_sign;
@@ -798,20 +898,19 @@ inline void HybQMC::measure_sp()
 					fac = -fac;
 				}
 
-				B.Gf[s][i_tau] -= S[s].D.mat_M[j][i] * fac;
+				B.Gf(s, i_tau) -= S[s].D.mat_M[j][i] * fac;
 
 				// Self-energy
 				for(int s2=0; s2<N_S; s2++){
 					if(s != s2){
 						if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
-							B.GSigma[s][i_tau] -= S[s].D.mat_M[j][i] * prm.U[s][s2] * fac;
+							B.GSigma(s, i_tau) -= S[s].D.mat_M[j][i] * prm.U[s][s2] * fac;
 						}
 					}
 				}
 			}
 		}
 	}
-
 }
 
 
@@ -919,8 +1018,141 @@ inline void HybQMC::measure_tp()
 		for(int s2=0; s2<N_S; s2++){
 // 			measure_tp_sub(B.chi[s1][s2], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k);
 			for(int n=0; n<=N_TP; n++){
-				B.chi[s1][s2][n] += measure_tp_sub(TP_tau[n], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k) * (double)w_sign;
+				B.chi(s1, s2, n) += measure_tp_sub(TP_tau[n], tau1[s2], flag1[s2], S[s2].k, tau2[s1], flag2[s1], S[s1].k) * (double)w_sign;
 			}
+		}
+	}
+}
+
+inline void HybQMC::measure_vx()
+{
+	// compute u and u2
+	//   VX_temp[s].u[2*N_VX1+N_VX2][2*N_VX1+N_VX2]
+	//   VX_temp[s].u2[2*N_VX1+N_VX2][2*N_VX1+N_VX2]
+	//
+	//  freq = ( 2 * (iw-N_VX1) + 1 ) * pi * T
+	//  (N_VX1 negative freq, N_VX1+N_VX2 positive freq )
+
+	double omega_f0 = M_PI / prm.beta;
+	// e^{i e2 tau_j} e^{-i e1 tau_i}
+	for(int s=0; s<N_S; s++){
+		std::complex<double> r_i[S[s].k], r_j[S[s].k];
+		for(int i=0; i<S[s].k; i++){
+			VX_temp[s].phase_i[N_VX1+0][i] = std::polar(1.0, -S[s].tau2[i] * omega_f0);
+			VX_temp[s].phase_j[N_VX1+0][i] = std::polar(1.0,  S[s].tau1[i] * omega_f0);
+
+			r_i[i] = VX_temp[s].phase_i[N_VX1+0][i] * VX_temp[s].phase_i[N_VX1+0][i];
+			r_j[i] = VX_temp[s].phase_j[N_VX1+0][i] * VX_temp[s].phase_j[N_VX1+0][i];
+		}
+		// positive frequencies
+		for(int iw=1; iw<N_VX1+N_VX2; iw++){
+			for(int i=0; i<S[s].k; i++){
+				VX_temp[s].phase_i[N_VX1+iw][i] = VX_temp[s].phase_i[N_VX1+iw-1][i] * r_i[i];
+				VX_temp[s].phase_j[N_VX1+iw][i] = VX_temp[s].phase_j[N_VX1+iw-1][i] * r_j[i];
+			}
+		}
+		// negative frequencies
+		for(int iw=0; iw<N_VX1; iw++){
+			for(int i=0; i<S[s].k; i++){
+				VX_temp[s].phase_i[N_VX1-iw-1][i] = conj(VX_temp[s].phase_i[N_VX1+iw][i]);
+				VX_temp[s].phase_j[N_VX1-iw-1][i] = conj(VX_temp[s].phase_j[N_VX1+iw][i]);
+			}
+		}
+	}
+
+	// u1(e1, e2)
+	for(int s=0; s<N_S; s++){
+		for(int iw1=0; iw1<2*N_VX1+N_VX2; iw1++){
+			for(int iw2=0; iw2<2*N_VX1+N_VX2; iw2++){
+				VX_temp[s].u[iw1][iw2] = 0;
+				VX_temp[s].u2[iw1][iw2] = 0;
+
+				for(int j=0; j<S[s].k; j++){
+					for(int i=0; i<S[s].k; i++){
+// 						complex<double> u = S[s].mat_M[j][i] * VX_temp[s].phase_j[iw2][j] * VX_temp[s].phase_i[iw1][i];
+						std::complex<double> u = S[s].D.mat_M[j][i] * VX_temp[s].phase_j[iw1][j] * VX_temp[s].phase_i[iw2][i];
+						VX_temp[s].u[iw1][iw2] += u;
+
+						#if IMPROV_ESTIM
+						if( VX_temp[s].flag_occup1[j] ){
+							VX_temp[s].u2[iw1][iw2] += u * prm_U_unrenorm;  // TODO
+						}
+						#endif
+					}
+				}
+				VX_temp[s].u[iw1][iw2] /= prm.beta;
+				VX_temp[s].u2[iw1][iw2] /= prm.beta;
+			}
+		}
+	}
+
+
+	// two-particle Green function
+	// charge and longtudinal spin
+	for(int s1=0; s1<N_S; s1++){
+		for(int iw1=0; iw1<2*N_VX1; iw1++){
+			for(int iw2=0; iw2<2*N_VX1; iw2++){
+				for(int nu=0; nu<N_VX2; nu++){
+					B.vx_G4_lo(s1, s1, iw1, iw2, nu) -= VX_temp[s1].u[iw1][iw2] * VX_temp[s1].u[iw2+nu][iw1+nu] * (double)w_sign;
+					#if IMPROV_ESTIM
+// 					B.vx_gamma_lo[s1][s1][iw1][iw2][nu] -= VX_temp[s1].u2[iw1][iw2] * VX_temp[s1].u[iw2+nu][iw1+nu] * (double)w_sign;
+					B.vx_gamma_lo(s1, s1, iw1, iw2, nu) -= VX_temp[s1].u[iw1][iw2] * VX_temp[s1].u2[iw2+nu][iw1+nu] * (double)w_sign;
+					#endif
+				}
+			}
+		}
+	}
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+						B.vx_G4_lo(s1, s2, iw1, iw2, nu) += VX_temp[s1].u[iw1][iw1+nu] * VX_temp[s2].u[iw2+nu][iw2] * (double)w_sign;
+						#if IMPROV_ESTIM
+// 						B.vx_gamma_lo[s1][s2][iw1][iw2][nu] += VX_temp[s1].u2[iw1][iw1+nu] * VX_temp[s2].u[iw2+nu][iw2] * (double)w_sign;
+						B.vx_gamma_lo(s1, s2, iw1, iw2, nu) += VX_temp[s1].u[iw1][iw1+nu] * VX_temp[s2].u2[iw2+nu][iw2] * (double)w_sign;
+						#endif
+					}
+				}
+			}
+		}
+	}
+	// transverse spin
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			if(s1 != s2){
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int iw2=0; iw2<2*N_VX1; iw2++){
+						for(int nu=0; nu<N_VX2; nu++){
+							B.vx_G4_tr(s1, s2, iw1, iw2, nu) -= VX_temp[s1].u[iw1][iw2] * VX_temp[s2].u[iw2+nu][iw1+nu] * (double)w_sign;
+							#if IMPROV_ESTIM
+		// 					B.vx_gamma_tr[s1][s2][iw1][iw2][nu] -= VX_temp[s1].u2[iw1][iw2] * VX_temp[s2].u[iw2+nu][iw1+nu] * (double)w_sign;
+							B.vx_gamma_tr(s1, s2, iw1, iw2, nu) -= VX_temp[s1].u[iw1][iw2] * VX_temp[s2].u2[iw2+nu][iw1+nu] * (double)w_sign;
+							#endif
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// single-particle Green function
+	for(int s=0; s<N_S; s++){
+		for(int iw=0; iw<2*N_VX1+N_VX2; iw++){
+			B.vx_Gf(s, iw) -= VX_temp[s].u[iw][iw] * (double)w_sign;
+			B.vx_self(s, iw) -= VX_temp[s].u2[iw][iw] * (double)w_sign;
+		}
+	}
+
+	// susceptibility
+	double occup[N_S];
+	for(int s=0; s<N_S; s++)  occup[s] = S[s].length();
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int nu=0; nu<N_VX2; nu++){
+				// B.vx_suscep[s1][s2][nu] += VX_temp[s1].occup[nu] * conj(VX_temp[s2].occup[nu]) * (double)w_sign;
+			}
+			B.vx_suscep(s1, s2, 0) += occup[s1] * occup[s2] * (double)w_sign;
 		}
 	}
 }
@@ -943,6 +1175,14 @@ void HybQMC::func_measure2()
 	measure_tp();
 }
 
+void HybQMC::func_measure3()
+{
+	measure_stat();
+	measure_sp();
+	measure_tp();
+	measure_vx();
+}
+
 //============================================================================
 //
 // AVERAGE DATA IN A BIN
@@ -957,7 +1197,7 @@ inline void HybQMC::averagebin_stat(int n_sample)
 
 
 	unsigned long sum_n_k = 0;
-	for(int i=0; i<N_K; i++)  sum_n_k += B_TOT.n_k[0][i];
+	for(int i=0; i<N_K; i++)  sum_n_k += B_TOT.n_k(0, i);
 
 	double B_ave_ktot = 0;
 	for(int i=0; i<N_S*N_K; i++){
@@ -973,7 +1213,7 @@ inline void HybQMC::averagebin_stat(int n_sample)
 	std::vector<double> B_ave_k(N_S);  // initialized by 0
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_K; i++){
-			double B_n_k = double(B_TOT.n_k[s][i]) / double(sum_n_k);
+			double B_n_k = double(B_TOT.n_k(s, i)) / double(sum_n_k);
 			PQ.Z_k[s][i] += B_n_k;
 			PQ.Z_k_err[s][i] += pow(B_n_k, 2);
 
@@ -1011,11 +1251,11 @@ inline void HybQMC::averagebin_sp(int n_sample)
 	double delta_tau = prm.beta / (double)N_TAU;
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_TAU; i++){
-			B_TOT.Gf[s][i] /= prm.beta * delta_tau * (double)n_sample;
+			B_TOT.Gf(s, i) /= prm.beta * delta_tau * (double)n_sample;
 		}
 
 		for(int i=N_TAU-1; i>0; i--){
-			B_TOT.Gf[s][i] = (B_TOT.Gf[s][i] + B_TOT.Gf[s][i-1]) * 0.5;
+			B_TOT.Gf(s, i) = (B_TOT.Gf(s, i) + B_TOT.Gf(s, i-1)) * 0.5;
 		}
 
 // 		B_TOT.Gf[s][0] = B_TOT.f_number[s] - 1.0;
@@ -1023,31 +1263,31 @@ inline void HybQMC::averagebin_sp(int n_sample)
 
 // 		for(int i=0; i<=N_TAU; i++){
 		for(int i=1; i<N_TAU; i++){
-			SP[s].Gf_tau[i] += B_TOT.Gf[s][i];
-			SP[s].Gf_tau_err[i] += pow(B_TOT.Gf[s][i], 2);
+			SP[s].Gf_tau[i] += B_TOT.Gf(s, i);
+			SP[s].Gf_tau_err[i] += pow(B_TOT.Gf(s, i), 2);
 		}
 	}
 
 	// Self-energy (direct measurement)
 	for(int s=0; s<N_S; s++){
 		for(int i=0; i<N_TAU; i++){
-			B_TOT.GSigma[s][i] /= prm.beta * delta_tau * (double)n_sample;
+			B_TOT.GSigma(s, i) /= prm.beta * delta_tau * (double)n_sample;
 		}
 
-		double g_0 = 1.5 * B_TOT.GSigma[s][0] - 0.5 * B_TOT.GSigma[s][1];
-		double g_beta = 1.5 * B_TOT.GSigma[s][N_TAU-1] - 0.5 * B_TOT.GSigma[s][N_TAU-2];
+		double g_0 = 1.5 * B_TOT.GSigma(s, 0) - 0.5 * B_TOT.GSigma(s, 1);
+		double g_beta = 1.5 * B_TOT.GSigma(s, N_TAU-1) - 0.5 * B_TOT.GSigma(s, N_TAU-2);
 
 		for(int i=N_TAU-1; i>0; i--){
-			B_TOT.GSigma[s][i] = (B_TOT.GSigma[s][i] + B_TOT.GSigma[s][i-1]) * 0.5;
+			B_TOT.GSigma(s, i) = (B_TOT.GSigma(s, i) + B_TOT.GSigma(s, i-1)) * 0.5;
 		}
 
-		B_TOT.GSigma[s][0] = g_0;
-		B_TOT.GSigma[s][N_TAU] = g_beta;
+		B_TOT.GSigma(s, 0) = g_0;
+		B_TOT.GSigma(s, N_TAU) = g_beta;
 
 		for(int i=0; i<=N_TAU; i++){
 		// for(int i=1; i<N_TAU; i++){
-			SP[s].GSigma_tau[i] += B_TOT.GSigma[s][i];
-			SP[s].GSigma_tau_err[i] += pow(B_TOT.GSigma[s][i], 2);
+			SP[s].GSigma_tau[i] += B_TOT.GSigma(s, i);
+			SP[s].GSigma_tau_err[i] += pow(B_TOT.GSigma(s, i), 2);
 		}
 	}
 
@@ -1058,17 +1298,17 @@ inline void HybQMC::averagebin_tp(int n_sample)
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
 			for(int i=0; i<=N_TP; i++){
-				B_TOT.chi[s1][s2][i] /= prm.beta * (double)n_sample;
+				B_TOT.chi(s1, s2, i) /= prm.beta * (double)n_sample;
 			}
 
-			if(s1==s2)  B_TOT.chi[s1][s1][0] = B_TOT.f_number[s1];
+			if(s1==s2)  B_TOT.chi(s1, s1, 0) = B_TOT.f_number[s1];
 
 			double temp = B_TOT.f_number[s1] * B_TOT.f_number[s2];
-			for(int i=0; i<=N_TP; i++)  B_TOT.chi[s1][s2][i] -= temp;
+			for(int i=0; i<=N_TP; i++)  B_TOT.chi(s1, s2, i) -= temp;
 
 			for(int i=0; i<=N_TP; i++){
-				TP[s1][s2].chi_tau[i] += B_TOT.chi[s1][s2][i];
-				TP[s1][s2].chi_tau_err[i] += pow(B_TOT.chi[s1][s2][i], 2);
+				TP[s1][s2].chi_tau[i] += B_TOT.chi(s1, s2, i);
+				TP[s1][s2].chi_tau_err[i] += pow(B_TOT.chi(s1, s2, i), 2);
 			}
 		}
 	}
@@ -1084,15 +1324,15 @@ inline void HybQMC::averagebin_tp(int n_sample)
 		double B_chi_diag = 0, B_chi_offd = 0;
 		for(int s1=0; s1<N_S; s1++){
 			for(int s2=0; s2<N_S; s2++){
-				if(s1==s2)  B_chi_diag += B_TOT.chi[s1][s2][i];
-				else        B_chi_offd += B_TOT.chi[s1][s2][i];
+				if(s1==s2)  B_chi_diag += B_TOT.chi(s1, s2, i);
+				else        B_chi_offd += B_TOT.chi(s1, s2, i);
 			}
 		}
 		B_chi_ch[i] = B_chi_diag + B_chi_offd;
 
 // 		B_chi_sp[i] = B_chi_diag - B_chi_offd / (double)(N_S-1);
 		for(int s1=0; s1<N_S; s1++){
-			for(int s2=0; s2<N_S; s2++)  B_chi_sp[i] += fac[s1][s2] * B_TOT.chi[s1][s2][i];
+			for(int s2=0; s2<N_S; s2++)  B_chi_sp[i] += fac[s1][s2] * B_TOT.chi(s1, s2, i);
 		}
 
 		TP_sp.chi_tau[i] += B_chi_sp[i];
@@ -1121,6 +1361,47 @@ inline void HybQMC::averagebin_tp(int n_sample)
 	PQ.stat_suscep_ch_err += pow(B_stat_suscep_ch, 2);
 }
 
+inline void HybQMC::averagebin_vx(int n_sample)
+{
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+						B_TOT.vx_G4_lo(s1, s2, iw1, iw2, nu) /= (double)n_sample;
+						B_TOT.vx_gamma_lo(s1, s2, iw1, iw2, nu) /= (double)n_sample;
+						VX_lo[s1][s2].Gfour[iw1][iw2][nu] += B_TOT.vx_G4_lo(s1, s2, iw1, iw2, nu);
+						VX_lo[s1][s2].gamma[iw1][iw2][nu] += B_TOT.vx_gamma_lo(s1, s2, iw1, iw2, nu);
+
+						B_TOT.vx_G4_tr(s1, s2, iw1, iw2, nu) /= (double)n_sample;
+						B_TOT.vx_gamma_tr(s1, s2, iw1, iw2, nu) /= (double)n_sample;
+						VX_tr[s1][s2].Gfour[iw1][iw2][nu] += B_TOT.vx_G4_tr(s1, s2, iw1, iw2, nu);
+						VX_tr[s1][s2].gamma[iw1][iw2][nu] += B_TOT.vx_gamma_tr(s1, s2, iw1, iw2, nu);
+					}
+				}
+			}
+		}
+	}
+
+	for(int s=0; s<N_S; s++){
+		for(int iw=0; iw<2*N_VX1+N_VX2; iw++){
+			B_TOT.vx_Gf(s, iw) /= (double)n_sample;
+			B_TOT.vx_self(s, iw) /= (double)n_sample;
+			VX_aux.G[s][iw] += B_TOT.vx_Gf(s, iw);
+			VX_aux.self[s][iw] += B_TOT.vx_self(s, iw);
+		}
+	}
+
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int nu=0; nu<N_VX2; nu++){
+				B_TOT.vx_suscep(s1, s2, nu) /= (double)n_sample;
+				VX_aux.suscep_lo[s1][s2][nu] += B_TOT.vx_suscep(s1, s2, nu) / prm.beta;
+			}
+		}
+	}
+}
+
 void HybQMC::func_averagebin0(int n_sample)
 {
 	averagebin_stat(n_sample);
@@ -1136,6 +1417,14 @@ void HybQMC::func_averagebin2(int n_sample)
 	averagebin_stat(n_sample);
 	averagebin_sp(n_sample);
 	averagebin_tp(n_sample);
+}
+
+void HybQMC::func_averagebin3(int n_sample)
+{
+	averagebin_stat(n_sample);
+	averagebin_sp(n_sample);
+	averagebin_tp(n_sample);
+	averagebin_vx(n_sample);
 }
 
 //============================================================================
@@ -1163,6 +1452,17 @@ static inline void average_sub(std::complex<double> &msr, std::complex<double> &
 
 	msr /= sign;
 	msr_err /= sign;
+}
+
+static inline void average_sub(double &msr, int n_bin, double sign)
+{
+	double dummy = 0;
+	average_sub(msr, dummy, n_bin, sign);
+}
+static inline void average_sub(std::complex<double> &msr, int n_bin, double sign)
+{
+	std::complex<double> dummy = 0;
+	average_sub(msr, dummy, n_bin, sign);
 }
 
 inline void HybQMC::fft_chi_after_interp(const vec_d &chi_tau, vec_c &chi_omega)
@@ -1409,6 +1709,172 @@ inline void HybQMC::average_tp(int n_bin)
 
 }
 
+inline void HybQMC::average_vx(int n_bin)
+{
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+						average_sub(VX_lo[s1][s2].Gfour[iw1][iw2][nu], n_bin, PQ.ave_sign);
+						average_sub(VX_lo[s1][s2].gamma[iw1][iw2][nu], n_bin, PQ.ave_sign);
+						average_sub(VX_tr[s1][s2].Gfour[iw1][iw2][nu], n_bin, PQ.ave_sign);
+						average_sub(VX_tr[s1][s2].gamma[iw1][iw2][nu], n_bin, PQ.ave_sign);
+					}
+				}
+			}
+		}
+	}
+	for(int s=0; s<N_S; s++){
+		for(int iw=0; iw<2*N_VX1+N_VX2; iw++){
+			average_sub(VX_aux.G[s][iw], n_bin, PQ.ave_sign);
+			average_sub(VX_aux.self[s][iw], n_bin, PQ.ave_sign);
+			VX_aux.self[s][iw] /= VX_aux.G[s][iw];
+		}
+	}
+
+	// complex<double> chi0_lo[N_S][2*N_VX1][N_VX2];
+	vec_vec_vec_c chi0_lo;  // [N_S][2*N_VX1][N_VX2]
+	resize(chi0_lo, N_S, 2*N_VX1, N_VX2);
+	zeros(chi0_lo);
+	for(int s=0; s<N_S; s++){
+		for(int iw=0; iw<2*N_VX1; iw++){
+			for(int nu=0; nu<N_VX2; nu++){
+				chi0_lo[s][iw][nu] = - VX_aux.G[s][iw] * VX_aux.G[s][iw+nu];
+			}
+		}
+	}
+	// complex<double> chi0_tr[2][2*N_VX1][N_VX2];
+	vec_vec_vec_vec_c chi0_tr;  // [N_S][N_S][2*N_VX1][N_VX2]
+	resize(chi0_tr, N_S, N_S, 2*N_VX1, N_VX2);
+	zeros(chi0_tr);
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			if(s1==s2){  // CHECK
+				for(int iw=0; iw<2*N_VX1; iw++){
+					for(int nu=0; nu<N_VX2; nu++){
+						// chi0_tr[s][iw][nu] = - VX->G[s][iw] * VX->G[(s+1)%2][iw+nu];
+						chi0_tr[s1][s2][iw][nu] = - VX_aux.G[s1][iw] * VX_aux.G[s2][iw+nu];
+					}
+				}
+			}
+		}
+	}
+
+	// vertex lo (from chi)
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+						VX_lo[s1][s2].gamma2[iw1][iw2][nu] = VX_lo[s1][s2].Gfour[iw1][iw2][nu];
+					}
+					// nu=0
+					VX_lo[s1][s2].gamma2[iw1][iw2][0] -= VX_aux.G[s1][iw1] * VX_aux.G[s2][iw2];
+				}
+			}
+			// iw1 == iw2,  s1 == s2
+			if(s1==s2){
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int nu=0; nu<N_VX2; nu++){
+						VX_lo[s1][s1].gamma2[iw1][iw1][nu] -= chi0_lo[s1][iw1][nu];
+					}
+				}
+			}
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+// 						VX->gamma2_lo[s1][s2][iw1][iw2][nu]
+// 						 /= -(chi0_lo[s1][iw1][nu] * chi0_lo[s2][iw2][nu]);
+						VX_lo[s1][s2].gamma2[iw1][iw2][nu]
+						 *= -prm.beta / (chi0_lo[s1][iw1][nu] * chi0_lo[s2][iw2][nu]);
+					}
+				}
+			}
+		}
+	}
+
+	// vertex tr (from chi)
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			if(s1==s2){
+				zeros(VX_tr[s1][s1].gamma2);
+			}
+			else{
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int iw2=0; iw2<2*N_VX1; iw2++){
+						for(int nu=0; nu<N_VX2; nu++){
+							// VX->gamma2_tr[s][iw1][iw2][nu] = VX->Gfour_tr[s][iw1][iw2][nu];
+							VX_tr[s1][s2].gamma2[iw1][iw2][nu] = VX_tr[s1][s2].Gfour[iw1][iw2][nu];
+						}
+					}
+				}
+				// iw1 == iw2
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int nu=0; nu<N_VX2; nu++){
+						VX_tr[s1][s2].gamma2[iw1][iw1][nu] -= chi0_tr[s1][s2][iw1][nu];
+					}
+				}
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int iw2=0; iw2<2*N_VX1; iw2++){
+						for(int nu=0; nu<N_VX2; nu++){
+							// VX->gamma2_tr[s][iw1][iw2][nu]
+							// *= -prm.beta / (chi0_tr[s][iw1][nu] * chi0_tr[s][iw2][nu]);
+							VX_tr[s1][s2].gamma2[iw1][iw2][nu]
+							 *= -prm.beta / (chi0_tr[s1][s2][iw1][nu] * chi0_tr[s1][s2][iw2][nu]);  // CHECK [s1][s2] or [s1][s1]
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// vertex (direct evaluation)
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int iw1=0; iw1<2*N_VX1; iw1++){
+				for(int iw2=0; iw2<2*N_VX1; iw2++){
+					for(int nu=0; nu<N_VX2; nu++){
+// 						VX->gamma_lo[s1][s2][iw1][iw2][nu] -= VX->self[s1][iw1] * VX->Gfour_lo[s1][s2][iw1][iw2][nu];
+// 						VX->gamma_lo[s1][s2][iw1][iw2][nu] *= prm.beta / (VX->G[s1][iw1+nu] * chi0_lo[s2][iw2][nu]);
+						VX_lo[s1][s2].gamma[iw1][iw2][nu] -= VX_aux.self[s2][iw2+nu] * VX_lo[s1][s2].Gfour[iw1][iw2][nu];
+						VX_lo[s1][s2].gamma[iw1][iw2][nu] *= prm.beta / (VX_aux.G[s2][iw2] * chi0_lo[s1][iw1][nu]);
+					}
+				}
+			}
+		}
+	}
+
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			if(s1==s2){
+				zeros(VX_tr[s1][s1].gamma);
+			}
+			else{
+				for(int iw1=0; iw1<2*N_VX1; iw1++){
+					for(int iw2=0; iw2<2*N_VX1; iw2++){
+						for(int nu=0; nu<N_VX2; nu++){
+							VX_tr[s1][s2].gamma[iw1][iw2][nu] -= VX_aux.self[s2][iw2+nu] * VX_tr[s1][s2].Gfour[iw1][iw2][nu];
+							VX_tr[s1][s2].gamma[iw1][iw2][nu] *= prm.beta / (VX_aux.G[s1][iw2] * chi0_tr[s1][s2][iw1][nu]);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// susceptibility
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			for(int nu=0; nu<N_VX2; nu++){
+				average_sub(VX_aux.suscep_lo[s1][s2][nu], n_bin, PQ.ave_sign);
+			}
+			// VX_aux.suscep_lo[s1][s2][0] -= PQ.occup_ud[s1] * PQ.occup_ud[s2] * prm.beta;
+			VX_aux.suscep_lo[s1][s2][0] -= SP[s1].f_number * SP[s2].f_number * prm.beta;  // CHECK
+		}
+	}
+}
+
 void HybQMC::func_average0(int n_bin)
 {
 	average_stat(n_bin);
@@ -1424,6 +1890,14 @@ void HybQMC::func_average2(int n_bin)
 	average_sp(n_bin);
 	average_tp(n_bin);
 }
+void HybQMC::func_average3(int n_bin)
+{
+	average_stat(n_bin);
+	average_sp(n_bin);
+	average_tp(n_bin);
+	average_vx(n_bin);
+}
+
 //============================================================================
 //
 // MPI REDUCE
@@ -1456,6 +1930,20 @@ double HybQMC::mpi_reduce_bin(int i_measure)
 		MPI_Reduce(B.chi.data(), B_TOT.chi.data(), B.chi.size(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
 
+	if( i_measure>2 ){
+		MPI_Reduce(B.vx_Gf.data(), B_TOT.vx_Gf.data(), B.vx_Gf.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.vx_self.data(), B_TOT.vx_self.data(), B.vx_self.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// 2*2* (2*N_VX1)^2 * N_VX2 * 2 = 32*N_VX1*N_VX1*N_VX2
+		MPI_Reduce(B.vx_G4_lo.data(), B_TOT.vx_G4_lo.data(), B.vx_G4_lo.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.vx_gamma_lo.data(), B_TOT.vx_gamma_lo.data(), B.vx_gamma_lo.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		// 2* (2*N_VX1)^2 * N_VX2 * 2 = 16*N_VX1*N_VX1*N_VX2
+		MPI_Reduce(B.vx_G4_tr.data(), B_TOT.vx_G4_tr.data(), B.vx_G4_tr.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(B.vx_gamma_tr.data(), B_TOT.vx_gamma_tr.data(), B.vx_gamma_tr.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+		// 2*2 * N_VX2 * 2 = 8 * N_VX2
+		MPI_Reduce(B.vx_suscep.data(), B_TOT.vx_suscep.data(), B.vx_suscep.size()*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	}
+
 	// if(my_rank==0)  *B = *B_TOT;
 
 	end = MPI_Wtime();
@@ -1465,7 +1953,6 @@ double HybQMC::mpi_reduce_bin(int i_measure)
 	#endif // HYB_QMC_MPI
 
 	return(end - start);
-
 }
 
 double HybQMC::mpi_reduce_accept()

@@ -40,10 +40,12 @@ public:
 
 	// [control]
 	int n_tau;
-	int n_tp, n_tp2;
 	int rand_seed;
 	int max_order;
 	bool flag_tp;
+	int n_tp, n_tp2;
+	bool flag_vx;
+	int n_vx1, n_vx2;
 
 	// [MC]
 	int n_bin, n_msr, n_add, n_shift, n_warmup;
@@ -98,6 +100,9 @@ void InputParams::read_params(string& file_ini)
 		flag_tp = pt.get<bool>("control.flag_tp", false);
 		n_tp = pt.get<int>("control.n_tp", 32);
 		n_tp2 = pt.get<int>("control.n_tp2", 256);
+		flag_vx = pt.get<bool>("control.flag_vx", false);
+		n_tp = pt.get<int>("control.n_vx1", 10);
+		n_tp2 = pt.get<int>("control.n_vx2", 1);
 
 		// [MC]
 		n_warmup = pt.get<int>("MC.n_warmup", 1000000);
@@ -137,11 +142,14 @@ void InputParams::summary()
 
 		cout << "\n[control]" << endl;
 		cout << "n_tau = " << n_tau << endl;
-		cout << "n_tp = " << n_tp << endl;
-		cout << "n_tp2 = " << n_tp2 << endl;
 		cout << "rand_seed = " << rand_seed << endl;
 		cout << "max_order = " << max_order << endl;
 		cout << "flag_tp = " << flag_tp << endl;
+		cout << "n_tp = " << n_tp << endl;
+		cout << "n_tp2 = " << n_tp2 << endl;
+		cout << "flag_vx = " << flag_vx << endl;
+		cout << "n_vx1 = " << n_vx1 << endl;
+		cout << "n_vx2 = " << n_vx2 << endl;
 
 		cout << "\n[MC]" << endl;
 		cout << "n_warmup = " << n_warmup << endl;
@@ -596,6 +604,64 @@ void print_two_particle(hyb_qmc_params& prm, phys_quant& PQ, t_tp& TP, vec_d& TP
 }
 
 
+void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
+{
+	int N_S = VX_lo.size();
+	int N_WF = VX_lo[0][0].gamma.size();  // 2*N_VX1
+	int N_WB = VX_lo[0][0].gamma[0][0].size();  // N_VX2
+
+	FILE *fp;
+	char filename[128];
+
+	double iwf[N_WF];
+	for(int i=0; i<N_WF; i++){
+		iwf[i+N_WF] = (double)(2*i+1) * M_PI / prm.beta;  // w>0
+		iwf[N_WF-i-1] = iwf[i+N_WF];  // w<<0
+	}
+
+	double iwb[N_WB];
+	for(int i=0; i<N_WB; i++){
+		iwb[i] = (double)(2*i) * M_PI / prm.beta;
+	}
+
+	sprintf(filename, "vertex_lo.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_WF; i++){
+		for(int j=0; j<N_WF; j++){
+			for(int k=0; k<N_WB; k++){
+				fprintf(fp, "%.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				for(int s1=0; s1<N_S; s1++){
+					for(int s2=0; s2<N_S; s2++){
+						fprintf(fp, " %.5e %.5e", real(VX_lo[s1][s2].gamma[i][j][k]), real(VX_lo[s1][s2].gamma[i][j][k]));
+					}
+				}
+				fprintf(fp, "\n");
+			}
+		}
+	}
+	fclose(fp);
+	printf("\n '%s'\n", filename);
+
+	sprintf(filename, "vertex_tr.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_WF; i++){
+		for(int j=0; j<N_WF; j++){
+			for(int k=0; k<N_WB; k++){
+				fprintf(fp, "%.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				for(int s1=0; s1<N_S; s1++){
+					for(int s2=0; s2<N_S; s2++){
+						fprintf(fp, " %.5e %.5e", real(VX_tr[s1][s2].gamma[i][j][k]), real(VX_tr[s1][s2].gamma[i][j][k]));
+					}
+				}
+				fprintf(fp, "\n");
+			}
+		}
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+}
+
+
 void print_Delta_tau(hyb_qmc_params& prm, vec_vec_d& delta_tau, vec_d& tau)
 {
 	int N_S = delta_tau.size();
@@ -717,7 +783,7 @@ int main(int argc, char* argv[])
 	in.summary();
 
 	// Initialize QMC worker
-	HybQMC MC(in.max_order, in.n_s, in.n_tau, in.n_tp, in.n_tp2, in.rand_seed);
+	HybQMC MC(in.max_order, in.n_s, in.n_tau, in.n_tp, in.n_tp2, in.n_vx1, in.n_vx2, in.rand_seed);
 
 	// Set MC parameters
 	num_mc n_mc;
@@ -758,7 +824,18 @@ int main(int argc, char* argv[])
 
 	// QMC calc
 	int flag_tp = in.flag_tp;
-	MC.eval(flag_tp);
+	int flag_vx = in.flag_vx;
+
+	int i_measure = 1;
+	if (flag_tp)  i_measure = 2;
+	if (flag_vx)  i_measure = 3;
+
+	if (!flag_tp && flag_vx){
+		cerr << "ERROR: flag_tp must be true when flag_vx=true." << endl;
+		exit(1);
+	}
+
+	MC.eval(i_measure);
 
 	// Get results
 	t_sp SP = MC.get_SP();
@@ -766,6 +843,8 @@ int main(int argc, char* argv[])
 	vec_d TP_tau = MC.get_TP_tau();
 	two_particle TP_sp = MC.get_TP_sp();
 	two_particle TP_ch = MC.get_TP_ch();
+	t_vx VX_lo = MC.get_VX_lo();
+	t_vx VX_tr = MC.get_VX_tr();
 	phys_quant PQ = MC.get_PQ();
 
 	// Output results
@@ -776,6 +855,9 @@ int main(int argc, char* argv[])
 
 		if(flag_tp){
 			print_two_particle(prm, PQ, TP, TP_tau, TP_sp, TP_ch);
+		}
+		if(flag_vx){
+			print_vertex(prm, VX_lo, VX_tr);
 		}
 
 		clock_t time_end = clock();

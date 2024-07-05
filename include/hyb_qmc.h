@@ -82,6 +82,40 @@ struct two_particle{
 	void allzeros();
 };
 
+struct vertex{
+	// (omega, omega'; nu>=0)
+	// *_lo : longitudinal [s1][s2]
+	// *_tr : transverse   [2] = {+-, -+}
+	// complex<double> Gfour_lo[N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];  // Two-particle Green function
+	// complex<double> Gfour_tr[N_S][2*N_VX1][2*N_VX1][N_VX2];
+	// complex<double> gamma2_lo[N_S][2][2*N_VX1][2*N_VX1][N_VX2];  // four-point vertex
+	// complex<double> gamma2_tr[N_S][2*N_VX1][2*N_VX1][N_VX2];
+	// complex<double> gamma_lo[N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];  // set SELF_VERTEX_ISO
+	// complex<double> gamma_tr[N_S][2*N_VX1][2*N_VX1][N_VX2];  // set SELF_VERTEX_ISO
+
+	vec_vec_vec_c Gfour;  // [2*N_VX1][2*N_VX1][N_VX2];  // Two-particle Green function
+	vec_vec_vec_c gamma2;  // [2*N_VX1][2*N_VX1][N_VX2];  // four-point vertex
+	vec_vec_vec_c gamma;  // [2*N_VX1][2*N_VX1][N_VX2];  // set SELF_VERTEX_ISO
+
+	vertex() {};
+	vertex(int n_vx1, int n_vx2);
+	void allzeros();
+};
+
+struct vertex_aux{
+	// complex<double> G[N_S][2*N_VX1+N_VX2];
+	// complex<double> self[N_S][2*N_VX1+N_VX2];  // set SELF_VERTEX_ISO
+	// complex<double> suscep_lo[N_S][N_S][N_VX2];
+
+	vec_vec_c G;  // [N_S][2*N_VX1+N_VX2]
+	vec_vec_c self;  // [N_S][2*N_VX1+N_VX2]  // set SELF_VERTEX_ISO
+	vec_vec_vec_c suscep_lo;  // [N_S][N_S][N_VX2]
+
+	vertex_aux() {};
+	vertex_aux(int n_s, int n_vx1, int n_vx2);
+	void allzeros();
+};
+
 struct phys_quant{
 	double ave_sign, ave_sign_err;
 	vec_vec_d Z_k, Z_k_err;  // [N_S][N_K]
@@ -102,11 +136,12 @@ struct phys_quant{
 
 using t_sp = std::vector<struct single_particle>;
 using t_tp = std::vector<std::vector<struct two_particle> >;
+using t_vx = std::vector<std::vector<struct vertex> >;
 
 class HybQMC{
 public:
 	// initializing : allocating memory and creating log file
-	HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int rand_seed);
+	HybQMC(int max_order, int n_s, int n_tau, int n_tp, int n_tp2, int n_vx1, int n_vx2, int rand_seed);
 	~HybQMC();
 
 	// setting number of MC steps
@@ -124,9 +159,10 @@ public:
 	void set_moment(const vec_d& moment_f_in);
 
 	// evaluating physical quantities via MC sampling
-	//  flag_tp = false : only single-particle
-	//            true  : single- and two-particle
-	void eval(bool flag_tp);
+	//  i_measure = 1 : only single-particle Green function
+	//              2 : + dynamical susceptibilities
+	//              3 : + vertex
+	void eval(int i_measure);
 
 	// get
 	t_sp& get_SP() { return SP; };
@@ -134,6 +170,8 @@ public:
 	vec_d& get_TP_tau() { return TP_tau; };
 	two_particle& get_TP_sp() { return TP_sp; };
 	two_particle& get_TP_ch() { return TP_ch; };
+	t_vx& get_VX_lo() { return VX_lo; };
+	t_vx& get_VX_tr() { return VX_tr; };
 	phys_quant& get_PQ() { return PQ; };
 
 	// printing a string in log file
@@ -144,6 +182,7 @@ private:
 	int N_K;
 	int N_S;
 	int N_TP, N_TP2;
+	int N_VX1, N_VX2;
 
 	struct hyb_qmc_params prm;
 	struct num_mc n_mc;
@@ -156,8 +195,10 @@ private:
 	t_sp SP;
 	t_tp TP;
 	vec_d TP_tau;
-	two_particle TP_sp, TP_ch;
-	phys_quant PQ;
+	struct two_particle TP_sp, TP_ch;
+	t_vx VX_lo, VX_tr;
+	struct vertex_aux VX_aux;
+	struct phys_quant PQ;
 	vec_vec_c Delta_omega;
 	vec_d moment_f;
 
@@ -182,24 +223,30 @@ private:
 	void measure_stat();
 	void measure_sp();
 	void measure_tp();
+	void measure_vx();
 	void func_measure0();
 	void func_measure1();
 	void func_measure2();
+	void func_measure3();
 
 	void averagebin_stat(int n_sample);
 	void averagebin_sp(int n_sample);
 	void averagebin_tp(int n_sample);
+	void averagebin_vx(int n_sample);
 	void func_averagebin0(int);
 	void func_averagebin1(int);
 	void func_averagebin2(int);
+	void func_averagebin3(int);
 
 	void fft_chi_after_interp(const vec_d& chi_tau, vec_c& chi_omega);
 	void average_stat(int n_bin);
 	void average_sp(int n_bin);
 	void average_tp(int n_bin);
+	void average_vx(int n_bin);
 	void func_average0(int);
 	void func_average1(int);
 	void func_average2(int);
+	void func_average3(int);
 
 	double mpi_reduce_bin(int);
 	double mpi_reduce_accept();
@@ -224,9 +271,26 @@ private:
 		double occup_tot, occup_mom;
 		// TP
 		Array3D<double> chi; // [N_S][N_S][N_TP+1]
+		// VX
+		Array2D<std::complex<double> > vx_Gf;  // [N_S][2*N_VX1+N_VX2]
+		Array2D<std::complex<double> > vx_self;  // [N_S][2*N_VX1+N_VX2];
+		Array5D<std::complex<double> > vx_G4_lo;  // [N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];
+		Array5D<std::complex<double> > vx_G4_tr;  // [N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];
+		Array5D<std::complex<double> > vx_gamma_lo;  // [N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];
+		Array5D<std::complex<double> > vx_gamma_tr;  // [N_S][N_S][2*N_VX1][2*N_VX1][N_VX2];
+		Array3D<std::complex<double> > vx_suscep;  // [N_S][N_S][N_VX2];
+
+		// complex<double> vx_Gf[2][2*N_VX1+N_VX2];
+		// complex<double> vx_self[2][2*N_VX1+N_VX2];
+		// complex<double> vx_G4_lo[2][2][2*N_VX1][2*N_VX1][N_VX2];
+		// complex<double> vx_gamma_lo[2][2][2*N_VX1][2*N_VX1][N_VX2];
+		// complex<double> vx_G4_tr[2][2*N_VX1][2*N_VX1][N_VX2];
+		// complex<double> vx_gamma_tr[2][2*N_VX1][2*N_VX1][N_VX2];
+		// complex<double> vx_suscep[2][2][N_VX2];
+		// complex<double> vx_G3[2][2][2*N_VX1][N_VX2];
 
 		phys_quant_bin() {};
-		phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp);
+		phys_quant_bin(int n_k, int n_s, int n_tau, int n_tp, int n_vx1, int n_vx2);
 		void allzeros();
 	};
 	phys_quant_bin B, B_TOT;
