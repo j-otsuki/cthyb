@@ -101,8 +101,8 @@ void InputParams::read_params(string& file_ini)
 		n_tp = pt.get<int>("control.n_tp", 32);
 		n_tp2 = pt.get<int>("control.n_tp2", 256);
 		flag_vx = pt.get<bool>("control.flag_vx", false);
-		n_tp = pt.get<int>("control.n_vx1", 10);
-		n_tp2 = pt.get<int>("control.n_vx2", 1);
+		n_vx1 = pt.get<int>("control.n_vx1", 10);
+		n_vx2 = pt.get<int>("control.n_vx2", 1);
 
 		// [MC]
 		n_warmup = pt.get<int>("MC.n_warmup", 1000000);
