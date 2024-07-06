@@ -614,9 +614,10 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
 	char filename[128];
 
 	double iwf[N_WF];
+	assert (N_WF%2 == 0);
 	for(int i=0; i<N_WF; i++){
-		iwf[i+N_WF] = (double)(2*i+1) * M_PI / prm.beta;  // w>0
-		iwf[N_WF-i-1] = iwf[i+N_WF];  // w<<0
+		int n = i - (int)(N_WF/2);
+		iwf[i] = (double)(2*n+1) * M_PI / prm.beta;
 	}
 
 	double iwb[N_WB];

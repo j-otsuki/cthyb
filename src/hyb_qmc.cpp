@@ -617,9 +617,9 @@ void HybQMC::sampling(int i_measure, int n_bin, int n_sample, int n_add, int n_s
 	//
 	// set function pointer
 	//
-	void (HybQMC::*func_measure[3])() = {&HybQMC::func_measure0, &HybQMC::func_measure1, &HybQMC::func_measure2};
-	void (HybQMC::*func_averagebin[3])(int) = {&HybQMC::func_averagebin0, &HybQMC::func_averagebin1, &HybQMC::func_averagebin2};
-	void (HybQMC::*func_average[3])(int) = {&HybQMC::func_average0, &HybQMC::func_average1, &HybQMC::func_average2};
+	void (HybQMC::*func_measure[4])() = {&HybQMC::func_measure0, &HybQMC::func_measure1, &HybQMC::func_measure2, &HybQMC::func_measure3};
+	void (HybQMC::*func_averagebin[4])(int) = {&HybQMC::func_averagebin0, &HybQMC::func_averagebin1, &HybQMC::func_averagebin2, &HybQMC::func_averagebin3};
+	void (HybQMC::*func_average[4])(int) = {&HybQMC::func_average0, &HybQMC::func_average1, &HybQMC::func_average2, &HybQMC::func_average3};
 
 	void (HybQMC::*func_add_remove[2])(int, int) = {&HybQMC::add_seg, &HybQMC::rem_seg};
 	void (HybQMC::*func_shift_tau[2])(int, int) = {&HybQMC::shift_tau1, &HybQMC::shift_tau2};
