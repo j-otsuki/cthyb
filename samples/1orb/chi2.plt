@@ -31,7 +31,9 @@ set xrange[0:20]
 set yrange[*:*]
 
 plot "chi_w.dat"u 1:2 title"sp" w lp ls 1\
-, "chi_w.dat"u 1:3 title"ch" w lp ls 2
+, "chi_w.dat"u 1:3 title"ch" w lp ls 2\
+, "chi_w.dat"u 1:4 title"00 (re)" w lp ls 3\
+, "chi_w.dat"u 1:6 title"01 (re)" w lp ls 4\
 
 set output
 
