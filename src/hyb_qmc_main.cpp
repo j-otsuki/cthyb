@@ -614,17 +614,20 @@ void print_two_particle(hyb_qmc_params& prm, phys_quant& PQ, t_tp& TP, vec_d& TP
 
 void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_aux)
 {
+	// VX_lo[N_S][N_S].gamma[N_VX1][N_VX1][N_VX2]
 	int N_S = VX_lo.size();
-	int N_WF = VX_lo[0][0].gamma.size();  // 2*N_VX1
+	int n_wf_2 = VX_lo[0][0].gamma.size();  // 2*N_VX1
 	int N_WB = VX_lo[0][0].gamma[0][0].size();  // N_VX2
+
+	assert (n_wf_2 % 2 == 0);
+	int N_WF = (int)(n_wf_2 / 2);  // N_VX1
 
 	FILE *fp;
 	char filename[128];
 
-	double iwf[N_WF];
-	assert (N_WF%2 == 0);
-	for(int i=0; i<N_WF; i++){
-		int n = i - (int)(N_WF/2);
+	double iwf[2*N_WF+N_WB];
+	for(int i=0; i<2*N_WF+N_WB; i++){
+		int n = i - N_WF;
 		iwf[i] = (double)(2*n+1) * M_PI / prm.beta;
 	}
 
@@ -635,10 +638,10 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 
 	sprintf(filename, "vertex_lo.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_WF; i++){
-		for(int j=0; j<N_WF; j++){
+	for(int i=0; i<2*N_WF; i++){
+		for(int j=0; j<2*N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, "%d %d %d", i-N_WF, j-N_WF, k);
 				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
@@ -654,10 +657,10 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 
 	sprintf(filename, "vertex_tr.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_WF; i++){
-		for(int j=0; j<N_WF; j++){
+	for(int i=0; i<2*N_WF; i++){
+		for(int j=0; j<2*N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, "%d %d %d", i-N_WF, j-N_WF, k);
 				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
@@ -673,10 +676,10 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 
 	sprintf(filename, "vertex2_lo.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_WF; i++){
-		for(int j=0; j<N_WF; j++){
+	for(int i=0; i<2*N_WF; i++){
+		for(int j=0; j<2*N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, "%d %d %d", i-N_WF, j-N_WF, k);
 				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
@@ -692,10 +695,10 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 
 	sprintf(filename, "vertex2_tr.dat");
 	fp=fopen(filename, "w");
-	for(int i=0; i<N_WF; i++){
-		for(int j=0; j<N_WF; j++){
+	for(int i=0; i<2*N_WF; i++){
+		for(int j=0; j<2*N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, "%d %d %d", i-N_WF, j-N_WF, k);
 				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
@@ -710,10 +713,11 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	printf(" '%s'\n", filename);
 
 
-	sprintf(filename, "vx_Gf_w.dat");
+	//
+	sprintf(filename, "wmeasure_Gf_w.dat");
 	fp=fopen(filename, "w");
 	// for(int i=0; i<N_WF+N_WB; i++){
-	for(int i=0; i<N_WF; i++){
+	for(int i=0; i<2*N_WF+N_WB; i++){
 		fprintf(fp, "%.4e", iwf[i]);
 		for(int s=0; s<N_S; s++){
 			fprintf(fp, " %.6e %.6e", real(VX_aux.G[s][i]), imag(VX_aux.G[s][i]));
@@ -723,8 +727,21 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	fclose(fp);
 	printf(" '%s'\n", filename);
 
+	sprintf(filename, "wmeasure_self_w.dat");
+	fp=fopen(filename, "w");
+	// for(int i=0; i<N_WF+N_WB; i++){
+	for(int i=0; i<2*N_WF+N_WB; i++){
+		fprintf(fp, "%.4e", iwf[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e %.6e", real(VX_aux.self[s][i]), imag(VX_aux.self[s][i]));
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
 
-	sprintf(filename, "vx_chi_w.dat");
+
+	sprintf(filename, "wmeasure_chi_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<N_WB; i++){
 		fprintf(fp, "%.4e", iwb[i]);
