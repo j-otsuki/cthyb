@@ -172,6 +172,7 @@ public:
 	two_particle& get_TP_ch() { return TP_ch; };
 	t_vx& get_VX_lo() { return VX_lo; };
 	t_vx& get_VX_tr() { return VX_tr; };
+	vertex_aux& get_VX_aux() { return VX_aux; };
 	phys_quant& get_PQ() { return PQ; };
 
 	// printing a string in log file

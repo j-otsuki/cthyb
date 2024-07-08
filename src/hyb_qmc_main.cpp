@@ -575,7 +575,15 @@ void print_two_particle(hyb_qmc_params& prm, phys_quant& PQ, t_tp& TP, vec_d& TP
 	sprintf(filename, "chi_w.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<=N_TP2; i++){
-		fprintf(fp, "%.4e %.5e %.5e\n", iw[i], real(TP_sp.chi_omega[i]), real(TP_ch.chi_omega[i]));
+		fprintf(fp, "%.4e", iw[i]);
+		fprintf(fp, " %.5e", real(TP_sp.chi_omega[i]));
+		fprintf(fp, " %.5e", real(TP_ch.chi_omega[i]));
+		for(int s1=0; s1<N_S; s1++){
+			for(int s2=0; s2<N_S; s2++){
+				fprintf(fp, " %.5e %.5e", real(TP[s1][s2].chi_omega[i]), imag(TP[s1][s2].chi_omega[i]));
+			}
+		}
+		fprintf(fp, "\n");
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
@@ -604,7 +612,7 @@ void print_two_particle(hyb_qmc_params& prm, phys_quant& PQ, t_tp& TP, vec_d& TP
 }
 
 
-void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
+void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_aux)
 {
 	int N_S = VX_lo.size();
 	int N_WF = VX_lo[0][0].gamma.size();  // 2*N_VX1
@@ -630,10 +638,11 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
 	for(int i=0; i<N_WF; i++){
 		for(int j=0; j<N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
-						fprintf(fp, " %.5e %.5e", real(VX_lo[s1][s2].gamma[i][j][k]), real(VX_lo[s1][s2].gamma[i][j][k]));
+						fprintf(fp, " %.5e %.5e", real(VX_lo[s1][s2].gamma[i][j][k]), imag(VX_lo[s1][s2].gamma[i][j][k]));
 					}
 				}
 				fprintf(fp, "\n");
@@ -648,10 +657,11 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
 	for(int i=0; i<N_WF; i++){
 		for(int j=0; j<N_WF; j++){
 			for(int k=0; k<N_WB; k++){
-				fprintf(fp, "%.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
 				for(int s1=0; s1<N_S; s1++){
 					for(int s2=0; s2<N_S; s2++){
-						fprintf(fp, " %.5e %.5e", real(VX_tr[s1][s2].gamma[i][j][k]), real(VX_tr[s1][s2].gamma[i][j][k]));
+						fprintf(fp, " %.5e %.5e", real(VX_tr[s1][s2].gamma[i][j][k]), imag(VX_tr[s1][s2].gamma[i][j][k]));
 					}
 				}
 				fprintf(fp, "\n");
@@ -660,6 +670,74 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr)
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
+
+	sprintf(filename, "vertex2_lo.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_WF; i++){
+		for(int j=0; j<N_WF; j++){
+			for(int k=0; k<N_WB; k++){
+				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				for(int s1=0; s1<N_S; s1++){
+					for(int s2=0; s2<N_S; s2++){
+						fprintf(fp, " %.5e %.5e", real(VX_lo[s1][s2].gamma2[i][j][k]), imag(VX_lo[s1][s2].gamma2[i][j][k]));
+					}
+				}
+				fprintf(fp, "\n");
+			}
+		}
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+
+	sprintf(filename, "vertex2_tr.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_WF; i++){
+		for(int j=0; j<N_WF; j++){
+			for(int k=0; k<N_WB; k++){
+				fprintf(fp, "%d %d %d", i-(int)(N_WF/2), j-(int)(N_WF/2), k);
+				fprintf(fp, " %.4e %.4e %.4e", iwf[i], iwf[j], iwb[k]);
+				for(int s1=0; s1<N_S; s1++){
+					for(int s2=0; s2<N_S; s2++){
+						fprintf(fp, " %.5e %.5e", real(VX_tr[s1][s2].gamma2[i][j][k]), imag(VX_tr[s1][s2].gamma2[i][j][k]));
+					}
+				}
+				fprintf(fp, "\n");
+			}
+		}
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+
+
+	sprintf(filename, "vx_Gf_w.dat");
+	fp=fopen(filename, "w");
+	// for(int i=0; i<N_WF+N_WB; i++){
+	for(int i=0; i<N_WF; i++){
+		fprintf(fp, "%.4e", iwf[i]);
+		for(int s=0; s<N_S; s++){
+			fprintf(fp, " %.6e %.6e", real(VX_aux.G[s][i]), imag(VX_aux.G[s][i]));
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+
+
+	sprintf(filename, "vx_chi_w.dat");
+	fp=fopen(filename, "w");
+	for(int i=0; i<N_WB; i++){
+		fprintf(fp, "%.4e", iwb[i]);
+		for(int s1=0; s1<N_S; s1++){
+			for(int s2=0; s2<N_S; s2++){
+				fprintf(fp, " %.5e %.5e", real(VX_aux.suscep_lo[s1][s2][i]), imag(VX_aux.suscep_lo[s1][s2][i]));
+			}
+		}
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	printf(" '%s'\n", filename);
+
 }
 
 
@@ -846,6 +924,7 @@ int main(int argc, char* argv[])
 	two_particle TP_ch = MC.get_TP_ch();
 	t_vx VX_lo = MC.get_VX_lo();
 	t_vx VX_tr = MC.get_VX_tr();
+	vertex_aux VX_aux = MC.get_VX_aux();
 	phys_quant PQ = MC.get_PQ();
 
 	// Output results
@@ -858,7 +937,7 @@ int main(int argc, char* argv[])
 			print_two_particle(prm, PQ, TP, TP_tau, TP_sp, TP_ch);
 		}
 		if(flag_vx){
-			print_vertex(prm, VX_lo, VX_tr);
+			print_vertex(prm, VX_lo, VX_tr, VX_aux);
 		}
 
 		clock_t time_end = clock();

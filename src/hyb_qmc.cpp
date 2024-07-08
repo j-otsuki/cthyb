@@ -1150,6 +1150,7 @@ inline void HybQMC::measure_vx()
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
 			for(int nu=0; nu<N_VX2; nu++){
+				// TODO
 				// B.vx_suscep[s1][s2][nu] += VX_temp[s1].occup[nu] * conj(VX_temp[s2].occup[nu]) * (double)w_sign;
 			}
 			B.vx_suscep(s1, s2, 0) += occup[s1] * occup[s2] * (double)w_sign;
@@ -1658,6 +1659,12 @@ inline void HybQMC::average_tp(int n_bin)
 	fft_chi_after_interp(TP_sp.chi_tau, TP_sp.chi_omega);
 	fft_chi_after_interp(TP_ch.chi_tau, TP_ch.chi_omega);
 
+	for(int s1=0; s1<N_S; s1++){
+		for(int s2=0; s2<N_S; s2++){
+			fft_chi_after_interp(TP[s1][s2].chi_tau, TP[s1][s2].chi_omega);
+		}
+	}
+
 
 	// checking symmetry
 	for(int i=0; i<N_TP2; i++){
@@ -1736,7 +1743,7 @@ inline void HybQMC::average_vx(int n_bin)
 	// complex<double> chi0_lo[N_S][2*N_VX1][N_VX2];
 	vec_vec_vec_c chi0_lo;  // [N_S][2*N_VX1][N_VX2]
 	resize(chi0_lo, N_S, 2*N_VX1, N_VX2);
-	zeros(chi0_lo);
+	// zeros(chi0_lo);
 	for(int s=0; s<N_S; s++){
 		for(int iw=0; iw<2*N_VX1; iw++){
 			for(int nu=0; nu<N_VX2; nu++){
@@ -1747,15 +1754,13 @@ inline void HybQMC::average_vx(int n_bin)
 	// complex<double> chi0_tr[2][2*N_VX1][N_VX2];
 	vec_vec_vec_vec_c chi0_tr;  // [N_S][N_S][2*N_VX1][N_VX2]
 	resize(chi0_tr, N_S, N_S, 2*N_VX1, N_VX2);
-	zeros(chi0_tr);
+	// zeros(chi0_tr);
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
-			if(s1==s2){  // CHECK
-				for(int iw=0; iw<2*N_VX1; iw++){
-					for(int nu=0; nu<N_VX2; nu++){
-						// chi0_tr[s][iw][nu] = - VX->G[s][iw] * VX->G[(s+1)%2][iw+nu];
-						chi0_tr[s1][s2][iw][nu] = - VX_aux.G[s1][iw] * VX_aux.G[s2][iw+nu];
-					}
+			for(int iw=0; iw<2*N_VX1; iw++){
+				for(int nu=0; nu<N_VX2; nu++){
+					// chi0_tr[s][iw][nu] = - VX->G[s][iw] * VX->G[(s+1)%2][iw+nu];
+					chi0_tr[s1][s2][iw][nu] = - VX_aux.G[s1][iw] * VX_aux.G[s2][iw+nu];
 				}
 			}
 		}
