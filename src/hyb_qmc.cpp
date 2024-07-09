@@ -33,18 +33,10 @@ static FILE *fp_log;
 static int my_rank=0, process_num=1;
 
 struct vertex_temp{
-// 	complex<double> phase_i[2*N_VX1+N_VX2][N_K];
-// 	complex<double> phase_j[2*N_VX1+N_VX2][N_K];
-// 	complex<double> u[2*N_VX1+N_VX2][2*N_VX1+N_VX2];
-// 	complex<double> u2[2*N_VX1+N_VX2][2*N_VX1+N_VX2];
 	vec_vec_c phase_i;  // [2*N_VX1+N_VX2][N_K]
 	vec_vec_c phase_j;  // [2*N_VX1+N_VX2][N_K]
 	vec_vec_c u;  // [2*N_VX1+N_VX2][2*N_VX1+N_VX2]
 	vec_vec_c u2;  // [2*N_VX1+N_VX2][2*N_VX1+N_VX2]
-	// int flag_occup1[N_K];
-	// int flag_occup2[N_K];
-	// double fac_g1[N_K];
-	// complex<double> occup[N_VX2];
 
 	vertex_temp() {};
 	vertex_temp(int n_k, int n_vx1, int n_vx2);
@@ -126,14 +118,8 @@ void vertex_aux::allzeros()
 vertex_temp::vertex_temp(int n_k, int n_vx1, int n_vx2)
 {
 	int n_iw = 2*n_vx1+n_vx2;
-
-	// vec_vec_c phase_i(2*N_VX1+N_VX2, N_K);
-	// vec_vec_c phase_j(2*N_VX1+N_VX2, N_K);
-	// vec_vec_c phase_i, phase_j;
 	resize(phase_i, n_iw, n_k);
 	resize(phase_j, n_iw, n_k);
-
-	// vec_vec_c u, u2;
 	resize(u, n_iw, n_iw);
 	resize(u2, n_iw, n_iw);
 }
@@ -903,8 +889,8 @@ inline void HybQMC::measure_sp()
 				// Self-energy
 				for(int s2=0; s2<N_S; s2++){
 					if(s != s2){
-						// if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
 						if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau1[j]) ){
+						// if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
 							B.GSigma(s, i_tau) -= S[s].D.mat_M[j][i] * prm.U[s][s2] * fac;
 						}
 					}
@@ -1027,13 +1013,6 @@ inline void HybQMC::measure_tp()
 
 inline void HybQMC::measure_vx()
 {
-	// compute u and u2
-	//   VX_temp[s].u[2*N_VX1+N_VX2][2*N_VX1+N_VX2]
-	//   VX_temp[s].u2[2*N_VX1+N_VX2][2*N_VX1+N_VX2]
-	//
-	//  freq = ( 2 * (iw-N_VX1) + 1 ) * pi * T
-	//  (N_VX1 negative freq, N_VX1+N_VX2 positive freq )
-
 	double omega_f0 = M_PI / prm.beta;
 	// e^{i e2 tau_j} e^{-i e1 tau_i}
 	for(int s=0; s<N_S; s++){
@@ -1074,11 +1053,9 @@ inline void HybQMC::measure_vx()
 						std::complex<double> u = S[s].D.mat_M[j][i] * VX_temp[s].phase_j[iw1][j] * VX_temp[s].phase_i[iw2][i];
 						VX_temp[s].u[iw1][iw2] += u;
 
-						#if IMPROV_ESTIM
-						if( VX_temp[s].flag_occup1[j] ){
-							VX_temp[s].u2[iw1][iw2] += u * prm_U_unrenorm;  // TODO
-						}
-						#endif
+						// if( VX_temp[s].flag_occup1[j] ){
+						// 	VX_temp[s].u2[iw1][iw2] += u * prm_U_unrenorm;
+						// }
 						for(int s2=0; s2<N_S; s2++){
 							if(s != s2){
 								if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau1[j]) ){
@@ -1155,7 +1132,6 @@ inline void HybQMC::measure_vx()
 		occup[s][0] = S[s].length();
 
 		// nu>0
-		// std::complex<double> temp[N_VX2] = {0};
 		vec_c temp(N_VX2, 0);  // initialize with zeros
 		for(int i=0; i<S[s].k; i++){
 			std::complex<double> phase_1 = std::polar(1.0,  S[s].tau1[i] * omega_b);
@@ -1177,16 +1153,11 @@ inline void HybQMC::measure_vx()
 	}
 
 	// susceptibility
-	// double occup[N_S];
-	// for(int s=0; s<N_S; s++)  occup[s] = S[s].length();
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
 			for(int nu=0; nu<N_VX2; nu++){
-				// TODO
-				// B.vx_suscep[s1][s2][nu] += VX_temp[s1].occup[nu] * conj(VX_temp[s2].occup[nu]) * (double)w_sign;
 				B.vx_suscep(s1, s2, nu) += occup[s1][nu] * conj(occup[s2][nu]) * (double)w_sign;
 			}
-			// B.vx_suscep(s1, s2, 0) += occup[s1] * occup[s2] * (double)w_sign;
 		}
 	}
 }
@@ -1773,10 +1744,8 @@ inline void HybQMC::average_vx(int n_bin)
 		}
 	}
 
-	// complex<double> chi0_lo[N_S][2*N_VX1][N_VX2];
 	vec_vec_vec_c chi0_lo;  // [N_S][2*N_VX1][N_VX2]
 	resize(chi0_lo, N_S, 2*N_VX1, N_VX2);
-	// zeros(chi0_lo);
 	for(int s=0; s<N_S; s++){
 		for(int iw=0; iw<2*N_VX1; iw++){
 			for(int nu=0; nu<N_VX2; nu++){
@@ -1784,16 +1753,17 @@ inline void HybQMC::average_vx(int n_bin)
 			}
 		}
 	}
-	// complex<double> chi0_tr[2][2*N_VX1][N_VX2];
 	vec_vec_vec_vec_c chi0_tr;  // [N_S][N_S][2*N_VX1][N_VX2]
 	resize(chi0_tr, N_S, N_S, 2*N_VX1, N_VX2);
-	// zeros(chi0_tr);
+	zeros(chi0_tr);
 	for(int s1=0; s1<N_S; s1++){
 		for(int s2=0; s2<N_S; s2++){
-			for(int iw=0; iw<2*N_VX1; iw++){
-				for(int nu=0; nu<N_VX2; nu++){
-					// chi0_tr[s][iw][nu] = - VX->G[s][iw] * VX->G[(s+1)%2][iw+nu];
-					chi0_tr[s1][s2][iw][nu] = - VX_aux.G[s1][iw] * VX_aux.G[s2][iw+nu];
+			if (s1 != s2){  // s1==s2 will not be used
+				for(int iw=0; iw<2*N_VX1; iw++){
+					for(int nu=0; nu<N_VX2; nu++){
+						// chi0_tr[s][iw][nu] = - VX->G[s][iw] * VX->G[(s+1)%2][iw+nu];
+						chi0_tr[s1][s2][iw][nu] = - VX_aux.G[s1][iw] * VX_aux.G[s2][iw+nu];
+					}
 				}
 			}
 		}
@@ -1842,7 +1812,6 @@ inline void HybQMC::average_vx(int n_bin)
 				for(int iw1=0; iw1<2*N_VX1; iw1++){
 					for(int iw2=0; iw2<2*N_VX1; iw2++){
 						for(int nu=0; nu<N_VX2; nu++){
-							// VX->gamma2_tr[s][iw1][iw2][nu] = VX->Gfour_tr[s][iw1][iw2][nu];
 							VX_tr[s1][s2].gamma2[iw1][iw2][nu] = VX_tr[s1][s2].Gfour[iw1][iw2][nu];
 						}
 					}
@@ -1907,8 +1876,7 @@ inline void HybQMC::average_vx(int n_bin)
 			for(int nu=0; nu<N_VX2; nu++){
 				average_sub(VX_aux.suscep_lo[s1][s2][nu], n_bin, PQ.ave_sign);
 			}
-			// VX_aux.suscep_lo[s1][s2][0] -= PQ.occup_ud[s1] * PQ.occup_ud[s2] * prm.beta;
-			VX_aux.suscep_lo[s1][s2][0] -= SP[s1].f_number * SP[s2].f_number * prm.beta;  // CHECK
+			VX_aux.suscep_lo[s1][s2][0] -= SP[s1].f_number * SP[s2].f_number * prm.beta;
 		}
 	}
 }

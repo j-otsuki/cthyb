@@ -713,10 +713,9 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	printf(" '%s'\n", filename);
 
 
-	//
+	// SP and TP by omega-measurement
 	sprintf(filename, "wmeasure_Gf_w.dat");
 	fp=fopen(filename, "w");
-	// for(int i=0; i<N_WF+N_WB; i++){
 	for(int i=0; i<2*N_WF+N_WB; i++){
 		fprintf(fp, "%.4e", iwf[i]);
 		for(int s=0; s<N_S; s++){
@@ -729,7 +728,6 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 
 	sprintf(filename, "wmeasure_self_w.dat");
 	fp=fopen(filename, "w");
-	// for(int i=0; i<N_WF+N_WB; i++){
 	for(int i=0; i<2*N_WF+N_WB; i++){
 		fprintf(fp, "%.4e", iwf[i]);
 		for(int s=0; s<N_S; s++){
@@ -739,7 +737,6 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
-
 
 	sprintf(filename, "wmeasure_chi_w.dat");
 	fp=fopen(filename, "w");
@@ -754,7 +751,6 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	}
 	fclose(fp);
 	printf(" '%s'\n", filename);
-
 }
 
 
