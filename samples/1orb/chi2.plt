@@ -27,7 +27,7 @@ set terminal postscript eps color enhanced "Times-Roman" 24
 set output "chi_w.eps"
 set xlabel "{/Symbol w}_{/Times-Italic n}"
 set ylabel "Re {/Symbol c}_{imp}(i{/Symbol w}_{/Times-Italic n}) / {/Times-Italic C_N}"
-set xrange[0:20]
+set xrange[0:1]
 set yrange[*:*]
 
 plot "chi_w.dat"u 1:2 title"sp" w lp ls 1\
