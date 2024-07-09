@@ -903,8 +903,8 @@ inline void HybQMC::measure_sp()
 				// Self-energy
 				for(int s2=0; s2<N_S; s2++){
 					if(s != s2){
-						if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
-						// if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau1[j]) ){  // 論文はこっち
+						// if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau2[i]) ){
+						if( prm.U[s][s2] != 0 && S[s2].is_occupied(S[s].tau1[j]) ){
 							B.GSigma(s, i_tau) -= S[s].D.mat_M[j][i] * prm.U[s][s2] * fac;
 						}
 					}
