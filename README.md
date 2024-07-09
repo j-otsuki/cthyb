@@ -4,7 +4,14 @@ Continuous-time quantum Monte Carlo method for an impurity Anderson model. The s
 
 ## Features
 
-To be updated.
+- model
+  - multiorbital single-impurity Anderson model
+  - density-density interactions (no exchange interaction)
+- phyaical quantities
+  - single-particle Green's function (self-energy)
+  - dynamical susceptibility
+  - two-particle (four-point) vertex
+  - improved estimators for the self-energy and the vertex part
 
 ## Requirement
 
@@ -24,7 +31,7 @@ Move into an empty directory for build:
 $ mkdir cthyb.build
 $ cd cthyb.build
 ```
-Now, build the project using ``cmake`` command 
+Now, build the project using ``cmake`` command
 ```
 $ cmake3 -DCMAKE_INSTALL_PREFIX=$HOME/local ../cthyb
 $ make
@@ -47,7 +54,7 @@ hybqmc version 0.2.0
 ## Samples
 
 Samples are provided in samples/ directory.
-How to run: 
+How to run:
 ```
 $ mpirun -np 2 hybqmc params.ini
 ```
@@ -69,7 +76,7 @@ MC.n_msr{int} = 10000
 The total number of samples are ``n_msr*n_bin``, where ``n_bin=10`` in the default setting.
 Typical choices for ``n_msr`` are
 
-- 10000 : No enough accuracy; But, can be used to get rough convergence of the bath function. 
+- 10000 : No enough accuracy; But, can be used to get rough convergence of the bath function.
 - 100000 : Reasonable accuracy.
 - 1000000 : High accuracy; For publication.
 
