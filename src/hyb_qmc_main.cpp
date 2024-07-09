@@ -8,7 +8,7 @@ Dept. of Physics, Tohoku University, Sendai, Japan
 
 */
 
-static const char version[64] = "0.2.1";
+static const char version[64] = "0.3.0";
 
 #include <vector>
 #include <iostream>
