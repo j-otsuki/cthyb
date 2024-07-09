@@ -674,7 +674,7 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	fclose(fp);
 	printf(" '%s'\n", filename);
 
-	sprintf(filename, "vertex2_lo.dat");
+	sprintf(filename, "vertex_lo_G4.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<2*N_WF; i++){
 		for(int j=0; j<2*N_WF; j++){
@@ -693,7 +693,7 @@ void print_vertex(hyb_qmc_params& prm, t_vx& VX_lo, t_vx& VX_tr, vertex_aux& VX_
 	fclose(fp);
 	printf(" '%s'\n", filename);
 
-	sprintf(filename, "vertex2_tr.dat");
+	sprintf(filename, "vertex_tr_G4.dat");
 	fp=fopen(filename, "w");
 	for(int i=0; i<2*N_WF; i++){
 		for(int j=0; j<2*N_WF; j++){

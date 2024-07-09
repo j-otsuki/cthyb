@@ -21,9 +21,9 @@ set yrange[-6:7]
 
 set key left bottom
 
-plot "<awk '$2 == 4 && $3 == 0' vertex2_lo.dat"u 4:(-$7) title"" w p ls 11\
-, "<awk '$2 == 4 && $3 == 2' vertex2_lo.dat"u 4:(-$7) title"" w p ls 12\
-, "<awk '$2 == 4 && $3 == 10' vertex2_lo.dat"u 4:(-$7) title"" w p ls 13\
+plot "<awk '$2 == 4 && $3 == 0' vertex_lo_G4.dat"u 4:(-$7) title"" w p ls 11\
+, "<awk '$2 == 4 && $3 == 2' vertex_lo_G4.dat"u 4:(-$7) title"" w p ls 12\
+, "<awk '$2 == 4 && $3 == 10' vertex_lo_G4.dat"u 4:(-$7) title"" w p ls 13\
 , "<awk '$2 == 4 && $3 == 0' vertex_lo.dat"u 4:(-$7) title"{/Symbol w}_{/Times-Italic m} = 0" w lp ls 1\
 , "<awk '$2 == 4 && $3 == 2' vertex_lo.dat"u 4:(-$7) title"4{/Symbol p}{/Times-Italic T}" w lp ls 2\
 , "<awk '$2 == 4 && $3 == 10' vertex_lo.dat"u 4:(-$7) title"20{/Symbol p}{/Times-Italic T}" w lp ls 3\
